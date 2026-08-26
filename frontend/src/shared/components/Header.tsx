@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Menu, Building2, Check, LogOut, User, Settings } from 'lucide-react';
+import { Bell, Menu, Building2, Check, LogOut, User, Settings, Plus, Pencil } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
@@ -23,6 +23,8 @@ import {
 } from '@/shared/ui/tooltip';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSwitchWorkspace } from '@/features/auth/hooks/useAuth';
+import { WorkspaceForm } from '@/features/workspace/components/WorkspaceForm';
+import { useCreateWorkspace, useRenameWorkspace } from '@/features/workspace/hooks/useWorkspace';
 import { ROLE_LABELS } from '@/shared/types';
 import { getPageTitle } from '@/shared/constants/pageTitles';
 
@@ -31,8 +33,20 @@ export function Header() {
   const location = useLocation();
   const { user, logout, isSidebarCollapsed, setMobileNavOpen, workspaces, activeWorkspaceId } = useAuthStore();
   const switchWorkspace = useSwitchWorkspace();
+  const createWorkspace = useCreateWorkspace();
+  const renameWorkspace = useRenameWorkspace();
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [workspaceFormMode, setWorkspaceFormMode] = React.useState<'create' | 'rename' | null>(null);
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+
+  const handleWorkspaceFormSubmit = async (name: string) => {
+    if (workspaceFormMode === 'rename' && activeWorkspace) {
+      await renameWorkspace.mutateAsync({ id: activeWorkspace.id, name });
+    } else {
+      await createWorkspace.mutateAsync(name);
+    }
+    setWorkspaceFormMode(null);
+  };
 
   const handleLogout = () => {
     logout();
@@ -69,33 +83,42 @@ export function Header() {
 
           {/* Right: Notifications + User Menu */}
           <div className="flex items-center gap-2">
-            {/* Workspace Switcher (only when the user belongs to more than one workspace) */}
-            {workspaces.length > 1 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2 max-w-[180px]">
-                    <Building2 className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{activeWorkspace?.name ?? 'Workspace'}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="font-normal text-caption text-[var(--color-text-muted)]">
-                    Ish maydonlari
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {workspaces.map((workspace) => (
-                    <DropdownMenuItem
-                      key={workspace.id}
-                      onClick={() => switchWorkspace(workspace.id)}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span className="truncate">{workspace.name}</span>
-                      {workspace.id === activeWorkspaceId && <Check className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {/* Workspace Switcher - always visible, so a single-workspace user can still create/rename one */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2 max-w-[180px]">
+                  <Building2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{activeWorkspace?.name ?? 'Workspace'}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal text-caption text-[var(--color-text-muted)]">
+                  Ish maydonlari
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {workspaces.map((workspace) => (
+                  <DropdownMenuItem
+                    key={workspace.id}
+                    onClick={() => switchWorkspace(workspace.id)}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="truncate">{workspace.name}</span>
+                    {workspace.id === activeWorkspaceId && <Check className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                {activeWorkspace?.role === 'OWNER' && (
+                  <DropdownMenuItem onClick={() => setWorkspaceFormMode('rename')} className="gap-2">
+                    <Pencil className="h-4 w-4" />
+                    Nomini o'zgartirish
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => setWorkspaceFormMode('create')} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Yangi ish maydoni
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Notifications */}
             <Tooltip>
@@ -154,6 +177,14 @@ export function Header() {
           </div>
         </div>
       </header>
+
+      <WorkspaceForm
+        isOpen={workspaceFormMode !== null}
+        onClose={() => setWorkspaceFormMode(null)}
+        onSubmit={handleWorkspaceFormSubmit}
+        initialName={workspaceFormMode === 'rename' ? activeWorkspace?.name : undefined}
+        isLoading={createWorkspace.isPending || renameWorkspace.isPending}
+      />
     </TooltipProvider>
   );
 }

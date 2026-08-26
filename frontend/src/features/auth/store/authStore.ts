@@ -16,6 +16,8 @@ interface AuthState {
   // Actions
   setAuth: (user: User, accessToken: string, workspaces: AuthWorkspace[]) => void;
   setActiveWorkspace: (workspaceId: number) => void;
+  addWorkspace: (workspace: AuthWorkspace) => void;
+  renameWorkspace: (workspaceId: number, name: string) => void;
   updateUser: (user: Partial<User>) => void;
   logout: () => void;
   clearAuth: () => void;
@@ -63,6 +65,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setActiveWorkspace: (workspaceId) => set({ activeWorkspaceId: workspaceId }),
+
+      addWorkspace: (workspace) =>
+        set((state) => ({
+          workspaces: [...state.workspaces, workspace],
+          activeWorkspaceId: workspace.id,
+        })),
+
+      renameWorkspace: (workspaceId, name) =>
+        set((state) => ({
+          workspaces: state.workspaces.map((w) => (w.id === workspaceId ? { ...w, name } : w)),
+        })),
 
       updateUser: (userData) =>
         set((state) => ({
