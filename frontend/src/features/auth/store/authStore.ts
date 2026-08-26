@@ -1,18 +1,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { User, UserRole, AuthTokens } from '@/shared/types';
+import { AuthWorkspace, User, UserRole } from '@/shared/types';
 
 interface AuthState {
   // State
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
+  workspaces: AuthWorkspace[];
+  activeWorkspaceId: number | null;
   isAuthenticated: boolean;
   isSidebarCollapsed: boolean;
 
   // Actions
-  setAuth: (user: User, tokens: AuthTokens) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setAuth: (user: User, accessToken: string, workspaces: AuthWorkspace[]) => void;
+  setActiveWorkspace: (workspaceId: number) => void;
   updateUser: (user: Partial<User>) => void;
   logout: () => void;
   clearAuth: () => void;
@@ -39,24 +40,25 @@ export const useAuthStore = create<AuthState>()(
       // Initial state
       user: null,
       accessToken: null,
-      refreshToken: null,
+      workspaces: [],
+      activeWorkspaceId: null,
       isAuthenticated: false,
       isSidebarCollapsed: false,
 
       // Actions
-      setAuth: (user, tokens) =>
+      setAuth: (user, accessToken, workspaces) => {
+        const { activeWorkspaceId } = get();
+        const stillValid = activeWorkspaceId != null && workspaces.some((w) => w.id === activeWorkspaceId);
         set({
           user,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          isAuthenticated: true,
-        }),
-
-      setTokens: (accessToken, refreshToken) =>
-        set({
           accessToken,
-          refreshToken,
-        }),
+          workspaces,
+          activeWorkspaceId: stillValid ? activeWorkspaceId : workspaces[0]?.id ?? null,
+          isAuthenticated: true,
+        });
+      },
+
+      setActiveWorkspace: (workspaceId) => set({ activeWorkspaceId: workspaceId }),
 
       updateUser: (userData) =>
         set((state) => ({
@@ -67,7 +69,8 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
+          workspaces: [],
+          activeWorkspaceId: null,
           isAuthenticated: false,
         }),
 
@@ -75,7 +78,8 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
+          workspaces: [],
+          activeWorkspaceId: null,
           isAuthenticated: false,
         }),
 
@@ -109,7 +113,8 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
+        workspaces: state.workspaces,
+        activeWorkspaceId: state.activeWorkspaceId,
         isAuthenticated: state.isAuthenticated,
         isSidebarCollapsed: state.isSidebarCollapsed,
       }),
@@ -123,13 +128,14 @@ export const getAuthStore = useAuthStore.getState;
 // Selectors for performance
 export const useUser = () => useAuthStore((state) => state.user);
 export const useAccessToken = () => useAuthStore((state) => state.accessToken);
-export const useRefreshToken = () => useAuthStore((state) => state.refreshToken);
 export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated);
 export const useIsSidebarCollapsed = () => useAuthStore((state) => state.isSidebarCollapsed);
+export const useActiveWorkspaceId = () => useAuthStore((state) => state.activeWorkspaceId);
+export const useWorkspaces = () => useAuthStore((state) => state.workspaces);
 export const useAuthActions = () =>
   useAuthStore((state) => ({
     setAuth: state.setAuth,
-    setTokens: state.setTokens,
+    setActiveWorkspace: state.setActiveWorkspace,
     updateUser: state.updateUser,
     logout: state.logout,
     toggleSidebar: state.toggleSidebar,

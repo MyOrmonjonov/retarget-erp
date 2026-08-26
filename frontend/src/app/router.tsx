@@ -7,7 +7,7 @@ import { RequireAuth } from './routes/guards';
 import { NotFoundPage } from './routes/NotFoundPage';
 
 // Import pages
-import { LoginPage } from '@/features/auth/components/LoginPage';
+import { AuthGatePage } from '@/features/auth/components/AuthGatePage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { ProjectsPage } from '@/features/projects/pages/ProjectsPage';
 import { TasksPage } from '@/features/tasks/pages/TasksPage';
@@ -31,7 +31,7 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/login',
-        element: <LoginPage />,
+        element: <AuthGatePage />,
       },
       {
         element: <Layout />,

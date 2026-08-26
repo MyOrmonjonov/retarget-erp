@@ -5,9 +5,11 @@ import { cn } from '@/shared/lib/utils';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useSyncEmployeeRole } from '@/features/auth/hooks/useAuth';
 
 export function Layout() {
   const { isSidebarCollapsed } = useAuthStore();
+  useSyncEmployeeRole();
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">

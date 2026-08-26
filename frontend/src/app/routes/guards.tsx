@@ -13,9 +13,10 @@ interface RequireAuthProps {
 export function RequireAuth({ children, allowedRoles }: RequireAuthProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
+  const activeWorkspaceId = useAuthStore((s) => s.activeWorkspaceId);
   const location = useLocation();
 
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated || !user || activeWorkspaceId == null) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 

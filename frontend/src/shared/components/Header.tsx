@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, ChevronRight, LogOut, User, Settings } from 'lucide-react';
+import { Bell, ChevronRight, Building2, Check, LogOut, User, Settings } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
@@ -22,14 +22,17 @@ import {
   TooltipProvider,
 } from '@/shared/ui/tooltip';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useSwitchWorkspace } from '@/features/auth/hooks/useAuth';
 import { ROLE_LABELS } from '@/shared/types';
 import { getPageTitle } from '@/shared/constants/pageTitles';
 
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isSidebarCollapsed, toggleSidebar } = useAuthStore();
+  const { user, logout, isSidebarCollapsed, toggleSidebar, workspaces, activeWorkspaceId } = useAuthStore();
+  const switchWorkspace = useSwitchWorkspace();
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
   const handleLogout = () => {
     logout();
@@ -68,6 +71,34 @@ export function Header() {
 
           {/* Right: Notifications + User Menu */}
           <div className="flex items-center gap-2">
+            {/* Workspace Switcher (only when the user belongs to more than one workspace) */}
+            {workspaces.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2 max-w-[180px]">
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{activeWorkspace?.name ?? 'Workspace'}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal text-caption text-[var(--color-text-muted)]">
+                    Ish maydonlari
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {workspaces.map((workspace) => (
+                    <DropdownMenuItem
+                      key={workspace.id}
+                      onClick={() => switchWorkspace(workspace.id)}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="truncate">{workspace.name}</span>
+                      {workspace.id === activeWorkspaceId && <Check className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Notifications */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -98,7 +129,7 @@ export function Header() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-body font-medium text-[var(--color-text-primary)]">{user.fullName}</p>
-                    <p className="text-caption text-[var(--color-text-muted)]">{user.email}</p>
+                    {user.email && <p className="text-caption text-[var(--color-text-muted)]">{user.email}</p>}
                     <Badge variant="outline" className="w-fit">{ROLE_LABELS[user.role]}</Badge>
                   </div>
                 </DropdownMenuLabel>

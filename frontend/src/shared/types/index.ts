@@ -58,7 +58,7 @@ export const ROLE_BADGE_STYLE: Record<UserRole, { backgroundColor: string; color
 export interface User {
   id: string;
   fullName: string;
-  email: string;
+  email?: string;
   phone?: string;
   avatar?: string;
   role: UserRole;
@@ -67,30 +67,31 @@ export interface User {
   projectCount?: number;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+/** A workspace the authenticated user belongs to (one workspace = one subscriber/agency) */
+export interface AuthWorkspace {
+  id: number;
+  name: string;
+  /** Workspace membership role: OWNER | MEMBER (system access level, distinct from UserRole org role) */
+  role: string;
 }
 
-export interface LoginRequest {
-  username: string;
-  password: string;
+export interface TelegramAuthUser {
+  id: number;
+  telegramId: number;
+  firstName: string;
+  lastName?: string;
+  username?: string;
+  photoUrl?: string;
+  uiLanguage: string;
+  theme: string;
+  remindersEnabled: boolean;
 }
 
-export interface LoginResponse {
+/** Response from POST /api/auth/telegram */
+export interface TelegramAuthResponse {
   accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresIn: number;
-  user: {
-    id: number;
-    username: string;
-    fullName: string;
-    email: string;
-    phone: string;
-    avatarUrl: string | null;
-    role: UserRole;
-  };
+  user: TelegramAuthUser;
+  workspaces: AuthWorkspace[];
 }
 
 /** Project */
