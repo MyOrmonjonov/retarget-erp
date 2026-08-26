@@ -77,6 +77,16 @@ class ApiClient {
     return this.client.put<T>(url, data);
   }
 
+  /** For FormData bodies (file uploads) - clears the instance's default JSON Content-Type
+   * header so the browser sets its own multipart boundary instead. */
+  postForm<T>(url: string, data: FormData) {
+    return this.client.post<T>(url, data, { headers: { 'Content-Type': undefined } });
+  }
+
+  putForm<T>(url: string, data: FormData) {
+    return this.client.put<T>(url, data, { headers: { 'Content-Type': undefined } });
+  }
+
   patch<T>(url: string, data?: unknown) {
     return this.client.patch<T>(url, data);
   }

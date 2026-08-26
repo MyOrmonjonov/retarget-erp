@@ -22,6 +22,11 @@ export interface AvailableGroup {
   title: string;
 }
 
+export interface GroupTopic {
+  id: number;
+  name: string;
+}
+
 interface PreparedGroupButton {
   preparedButtonId: string;
   requestId: number;
@@ -51,6 +56,11 @@ export const groupsApi = {
 
   link: async (chatId: number): Promise<Group> => {
     const response = await api.post<Group>(`/groups/telegram/link?chatId=${chatId}`);
+    return response.data;
+  },
+
+  listTopics: async (groupId: number): Promise<GroupTopic[]> => {
+    const response = await api.get<GroupTopic[]>(`/groups/${groupId}/topics`);
     return response.data;
   },
 

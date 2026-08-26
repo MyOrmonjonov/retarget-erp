@@ -8,27 +8,31 @@ import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { Plus, Search, Trash2, Check } from 'lucide-react';
-import type { Task } from '@/shared/types';
+import { Plus, Search, Trash2, Check, ListChecks, Paperclip } from 'lucide-react';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
+import type { TaskPriority } from '@/shared/types';
 import { TaskForm, type TaskFormData } from '../components/TaskForm';
+import type { TaskListItem, TaskDetail } from '../api/tasksApi';
+import { tasksApi } from '../api/tasksApi';
 import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus, useDeleteTask } from '../hooks/useTasks';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
+import { useGroups } from '@/features/groups/hooks/useGroups';
 import { useUser } from '@/features/auth/store/authStore';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
+import { toast } from 'sonner';
 
 const today = new Date();
 const tomorrow = new Date(today);
 tomorrow.setDate(today.getDate() + 1);
 
-const priorityDotColor: Record<Task['priority'], string> = {
+const priorityDotColor: Record<TaskPriority, string> = {
   LOW: 'bg-[var(--color-text-muted)]',
   MEDIUM: 'bg-[var(--color-warning)]',
   HIGH: 'bg-[var(--color-error)]',
   URGENT: 'bg-[var(--color-error)]',
 };
 
-const priorityTextColor: Record<Task['priority'], string> = {
+const priorityTextColor: Record<TaskPriority, string> = {
   LOW: 'text-[var(--color-text-muted)]',
   MEDIUM: 'text-[var(--color-warning)]',
   HIGH: 'text-[var(--color-error)]',
@@ -42,8 +46,11 @@ function isSameDay(dateStr: string, ref: Date) {
 
 type FilterValue = 'FAOL' | 'MENIKI' | 'BUGUN' | 'MUDDATI_OTGAN';
 
-function TaskRow({ task, onEdit, onComplete, onDelete }: { task: Task; onEdit: () => void; onComplete: () => void; onDelete: () => void }) {
+function TaskRow({ task, onEdit, onComplete, onDelete }: { task: TaskListItem; onEdit: () => void; onComplete: () => void; onDelete: () => void }) {
   const isDone = task.status === 'DONE';
+  const extraAssignees = task.assigneeIds.length - 1;
+  const [checklistDone, checklistTotal] = task.checklistSummary.split('/').map(Number);
+
   return (
     <Card className="p-4 flex items-center gap-4">
       <button
@@ -59,14 +66,28 @@ function TaskRow({ task, onEdit, onComplete, onDelete }: { task: Task; onEdit: (
       </button>
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
         <p className="font-medium text-[var(--color-text-primary)] truncate">{task.title}</p>
-        <span className="inline-flex items-center gap-1.5 mt-0.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${priorityDotColor[task.priority]}`} />
-          <span className={`text-caption ${priorityTextColor[task.priority]}`}>{TASK_PRIORITY_LABELS[task.priority]}</span>
+        <span className="inline-flex items-center gap-2 mt-0.5">
+          <span className="inline-flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${priorityDotColor[task.priority]}`} />
+            <span className={`text-caption ${priorityTextColor[task.priority]}`}>{TASK_PRIORITY_LABELS[task.priority]}</span>
+          </span>
+          {checklistTotal > 0 && (
+            <span className="inline-flex items-center gap-1 text-caption text-[var(--color-text-muted)]">
+              <ListChecks className="h-3 w-3" />{checklistDone}/{checklistTotal}
+            </span>
+          )}
+          {task.fileCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-caption text-[var(--color-text-muted)]">
+              <Paperclip className="h-3 w-3" />{task.fileCount}
+            </span>
+          )}
         </span>
       </div>
       <div className="hidden sm:flex items-center gap-2">
         <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="sm" />
-        <span className="text-caption text-[var(--color-text-secondary)]">{task.assigneeName}</span>
+        <span className="text-caption text-[var(--color-text-secondary)]">
+          {task.assigneeName}{extraAssignees > 0 && ` +${extraAssignees}`}
+        </span>
       </div>
       <span className="hidden sm:block text-caption text-[var(--color-text-muted)] w-12">
         {new Date(task.dueDate).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
@@ -86,6 +107,7 @@ export function TasksPage() {
   const currentUser = useUser();
   const { data: tasks = [], isLoading } = useTasks();
   const { data: employees = [] } = useEmployees();
+  const { data: groups = [] } = useGroups();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const changeStatus = useChangeTaskStatus();
@@ -111,11 +133,12 @@ export function TasksPage() {
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
+  const [isFormLoading, setIsFormLoading] = useState(false);
 
   // Delete confirmation states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<TaskListItem | null>(null);
 
   const filteredTasks = useMemo(() => {
     return displayTasks.filter((t) => {
@@ -125,7 +148,7 @@ export function TasksPage() {
         case 'FAOL':
           return t.status !== 'DONE';
         case 'MENIKI':
-          return currentUser != null && t.assigneeId === currentUser.id;
+          return currentUser != null && t.assigneeIds.includes(currentUser.id);
         case 'BUGUN':
           return isSameDay(t.dueDate, today);
         case 'MUDDATI_OTGAN':
@@ -145,9 +168,18 @@ export function TasksPage() {
     setIsFormOpen(true);
   }, []);
 
-  const handleOpenEditForm = useCallback((task: Task) => {
-    setEditingTask(task);
+  const handleOpenEditForm = useCallback(async (task: TaskListItem) => {
+    setIsFormLoading(true);
     setIsFormOpen(true);
+    try {
+      const detail = await tasksApi.detail(task.id);
+      setEditingTask(detail);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Vazifa ma'lumotini olishda xatolik yuz berdi");
+      setIsFormOpen(false);
+    } finally {
+      setIsFormLoading(false);
+    }
   }, []);
 
   const handleCloseForm = useCallback(() => {
@@ -157,19 +189,19 @@ export function TasksPage() {
 
   const handleFormSubmit = useCallback(async (data: TaskFormData) => {
     if (editingTask) {
-      await updateTask.mutateAsync({ id: String(editingTask.id), data });
+      await updateTask.mutateAsync({ id: editingTask.id, data });
     } else {
       await createTask.mutateAsync(data);
     }
     handleCloseForm();
   }, [editingTask, updateTask, createTask, handleCloseForm]);
 
-  const handleComplete = useCallback((task: Task) => {
+  const handleComplete = useCallback((task: TaskListItem) => {
     if (task.status === 'DONE') return;
-    changeStatus.mutate({ id: String(task.id), status: 'DONE' });
+    changeStatus.mutate({ id: task.id, status: 'DONE' });
   }, [changeStatus]);
 
-  const handleOpenDelete = useCallback((task: Task) => {
+  const handleOpenDelete = useCallback((task: TaskListItem) => {
     setDeletingTask(task);
     setIsDeleteOpen(true);
   }, []);
@@ -181,7 +213,7 @@ export function TasksPage() {
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingTask) return;
-    await deleteTask.mutateAsync(String(deletingTask.id));
+    await deleteTask.mutateAsync(deletingTask.id);
     handleCloseDelete();
   }, [deletingTask, deleteTask, handleCloseDelete]);
 
@@ -266,8 +298,9 @@ export function TasksPage() {
         onClose={handleCloseForm}
         onSubmit={handleFormSubmit}
         initialData={editingTask}
-        isLoading={createTask.isPending || updateTask.isPending}
+        isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
+        groups={groups}
       />
 
       {/* Delete Confirmation Modal */}

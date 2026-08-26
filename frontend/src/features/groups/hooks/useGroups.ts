@@ -9,6 +9,14 @@ export const useGroups = () =>
     staleTime: 15_000,
   });
 
+export const useGroupTopics = (groupId: number | null) =>
+  useQuery({
+    queryKey: ['groups', groupId, 'topics'],
+    queryFn: () => groupsApi.listTopics(groupId!),
+    enabled: groupId != null,
+    staleTime: 30_000,
+  });
+
 export const useAvailableGroups = (enabled: boolean) =>
   useQuery({
     queryKey: ['groups', 'available'],

@@ -12,6 +12,21 @@ interface TaskPersonDto {
   photoUrl: string | null;
 }
 
+interface TaskChecklistItemDto {
+  id: number;
+  text: string;
+  done: boolean;
+}
+
+interface TaskAttachmentDto {
+  id: number;
+  name: string;
+  contentType: string;
+  size: number;
+  url: string;
+  available: boolean;
+}
+
 interface TaskDto {
   id: number;
   title: string;
@@ -21,10 +36,18 @@ interface TaskDto {
   dueAt: string | null;
   createdAt: string;
   updatedAt: string;
-  // The list endpoint always returns this empty (person details are only populated on the
-  // single-task detail/create/update responses) - assigneeIds is the reliable field everywhere.
+  // The list endpoint always returns assignees/checklistItems/attachments empty (person/item
+  // details are only populated on the single-task detail/create/update responses) - assigneeIds,
+  // checklist (a "done/total" summary string) and files (a count) are what the list always has.
   assigneeIds: number[];
   assignees: TaskPersonDto[];
+  checklist: string;
+  files: number;
+  checklistItems: TaskChecklistItemDto[];
+  attachments: TaskAttachmentDto[];
+  reminderMinutes: number | null;
+  groupId: number | null;
+  topicId: number | null;
 }
 
 // Backend has no analog for frontend priority MEDIUM/backend NORMAL naming, but the two
@@ -60,12 +83,44 @@ const STATUS_TO_BACKEND: Record<TaskStatus, BackendStatus> = {
   BLOCKED: 'BLOCKED',
 };
 
-function toTask(dto: TaskDto): Task {
+export interface TaskChecklistItem {
+  text: string;
+  done: boolean;
+}
+
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  available: boolean;
+}
+
+/** The list endpoint's shape: every Task field plus the extra bits the Tasks page's row/form need.
+ * `id` is narrowed to `string` (the mapper always produces one) so callers don't need to coerce it. */
+export interface TaskListItem extends Omit<Task, 'id'> {
+  id: string;
+  assigneeIds: string[];
+  checklistSummary: string;
+  fileCount: number;
+}
+
+/** Full detail (fetched on open-to-edit) - includes actual checklist rows and attachment metadata. */
+export interface TaskDetail extends TaskListItem {
+  checklistItems: TaskChecklistItem[];
+  attachments: TaskAttachment[];
+  reminderMinutes?: number;
+  groupId?: string;
+  topicId?: string;
+}
+
+function toTaskListItem(dto: TaskDto): TaskListItem {
   // Prefer the enriched `assignees` list (present on detail/create/update responses); fall back
-  // to the bare `assigneeIds` id (all the list endpoint ever returns) with no name/avatar yet -
-  // the caller resolves those from its own employee list, see resolveAssigneeDisplay below.
+  // to the bare `assigneeIds` ids (all the list endpoint ever returns) with no name/avatar yet -
+  // the caller resolves those from its own employee list.
   const primary = dto.assignees[0];
   const primaryId = primary ? primary.id : dto.assigneeIds[0];
+  const assigneeIds = (dto.assignees.length > 0 ? dto.assignees.map((a) => a.id) : dto.assigneeIds).map(String);
   return {
     id: String(dto.id),
     title: dto.title,
@@ -75,14 +130,34 @@ function toTask(dto: TaskDto): Task {
     assigneeId: primaryId != null ? String(primaryId) : '',
     assigneeName: primary ? primary.name : '',
     assigneeAvatar: primary?.photoUrl ?? undefined,
+    assigneeIds,
     // Backend tasks aren't linked to a project (that link doesn't exist yet) - left blank,
     // the Tasks page doesn't render these fields.
     projectId: '',
     projectName: '',
     dueDate: dto.dueAt ?? dto.createdAt,
     tags: [],
+    checklistSummary: dto.checklist,
+    fileCount: dto.files,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+  };
+}
+
+function toTaskDetail(dto: TaskDto): TaskDetail {
+  return {
+    ...toTaskListItem(dto),
+    checklistItems: dto.checklistItems.map((item) => ({ text: item.text, done: item.done })),
+    attachments: dto.attachments.map((a) => ({
+      id: String(a.id),
+      name: a.name,
+      contentType: a.contentType,
+      size: a.size,
+      available: a.available,
+    })),
+    reminderMinutes: dto.reminderMinutes ?? undefined,
+    groupId: dto.groupId != null ? String(dto.groupId) : undefined,
+    topicId: dto.topicId != null ? String(dto.topicId) : undefined,
   };
 }
 
@@ -102,49 +177,75 @@ function toDueAt(dateStr: string): string | undefined {
 export interface TaskInput {
   title: string;
   description?: string;
-  assigneeId: string;
+  assigneeIds: string[];
   priority: TaskPriority;
   status: TaskStatus;
   dueDate: string;
+  checklist?: TaskChecklistItem[];
+  reminderMinutes?: number;
+  files?: File[];
+  /** Where the task lives: the workspace generally, or a specific linked Telegram group
+   * (optionally a topic/thread within it) - matching the task creator's own visibility. */
+  groupId?: string;
+  topicId?: string;
+}
+
+function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) {
+  return {
+    title: data.title,
+    description: data.description || undefined,
+    status: STATUS_TO_BACKEND[data.status],
+    priority: PRIORITY_TO_BACKEND[data.priority],
+    visibility: data.groupId ? 'GROUP' : 'WORKSPACE',
+    groupId: data.groupId ? Number(data.groupId) : undefined,
+    topicId: data.topicId ? Number(data.topicId) : undefined,
+    dueAt: toDueAt(data.dueDate),
+    assigneeIds: data.assigneeIds.map(Number),
+    checklist: data.checklist && data.checklist.length > 0
+      ? data.checklist.map((item) => ({ text: item.text, done: item.done }))
+      : undefined,
+    reminderMinutes: data.reminderMinutes,
+    ...extra,
+  };
+}
+
+function toMultipartForm(task: Record<string, unknown>, files: File[]): FormData {
+  const form = new FormData();
+  form.append('task', new Blob([JSON.stringify(task)], { type: 'application/json' }));
+  files.forEach((file) => form.append('files', file));
+  return form;
 }
 
 export const tasksApi = {
-  list: async (): Promise<Task[]> => {
+  list: async (): Promise<TaskListItem[]> => {
     const response = await api.get<TaskDto[]>('/tasks', { scope: 'ALL' });
-    return response.data.filter((t) => t.status !== 'CANCELLED').map(toTask);
+    return response.data.filter((t) => t.status !== 'CANCELLED').map(toTaskListItem);
   },
 
-  create: async (data: TaskInput): Promise<Task> => {
-    const response = await api.post<TaskDto>('/tasks', {
-      workspaceId: currentWorkspaceId(),
-      title: data.title,
-      description: data.description || undefined,
-      status: STATUS_TO_BACKEND[data.status],
-      priority: PRIORITY_TO_BACKEND[data.priority],
-      visibility: 'WORKSPACE',
-      dueAt: toDueAt(data.dueDate),
-      assigneeIds: data.assigneeId ? [Number(data.assigneeId)] : [],
-    });
-    return toTask(response.data);
+  detail: async (id: string): Promise<TaskDetail> => {
+    const response = await api.get<TaskDto>(`/tasks/${id}`);
+    return toTaskDetail(response.data);
   },
 
-  update: async (id: string, data: TaskInput): Promise<Task> => {
-    const response = await api.put<TaskDto>(`/tasks/${id}`, {
-      title: data.title,
-      description: data.description || undefined,
-      status: STATUS_TO_BACKEND[data.status],
-      priority: PRIORITY_TO_BACKEND[data.priority],
-      visibility: 'WORKSPACE',
-      assigneeIds: data.assigneeId ? [Number(data.assigneeId)] : [],
-      dueAt: toDueAt(data.dueDate),
-      dueAtProvided: true,
-    });
-    return toTask(response.data);
+  create: async (data: TaskInput): Promise<TaskListItem> => {
+    const payload = buildTaskPayload(data, { workspaceId: currentWorkspaceId() });
+    const response = data.files && data.files.length > 0
+      ? await api.postForm<TaskDto>('/tasks', toMultipartForm(payload, data.files))
+      : await api.post<TaskDto>('/tasks', payload);
+    return toTaskListItem(response.data);
   },
 
-  changeStatus: async (id: string, status: TaskStatus): Promise<Task> => {
+  update: async (id: string, data: TaskInput): Promise<TaskListItem> => {
+    const payload = buildTaskPayload(data, { dueAtProvided: true, reminderProvided: true });
+    const response = data.files && data.files.length > 0
+      ? await api.putForm<TaskDto>(`/tasks/${id}`, toMultipartForm(payload, data.files))
+      : await api.put<TaskDto>(`/tasks/${id}`, payload);
+    return toTaskListItem(response.data);
+  },
+
+  changeStatus: async (id: string, status: TaskStatus): Promise<TaskListItem> => {
     const response = await api.patch<TaskDto>(`/tasks/${id}/status`, { status: STATUS_TO_BACKEND[status] });
-    return toTask(response.data);
+    return toTaskListItem(response.data);
   },
 
   // The backend only hard-deletes an already-archived task (two-step by design). A plain
