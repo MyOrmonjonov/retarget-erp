@@ -200,6 +200,24 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
     ...topics.map((t) => ({ value: String(t.id), label: t.name })),
   ];
 
+  const selectedGroup = form.groupId ? linkedGroups.find((g) => String(g.id) === form.groupId) : undefined;
+  // A GROUP-placed task can only be assigned to that group's own members (the backend rejects
+  // anyone else) - once a group is picked, swap the assignee picker to just its member list.
+  const assigneeOptions: SelectOption[] = selectedGroup
+    ? selectedGroup.memberList.map((m) => ({ value: String(m.id), label: m.name }))
+    : assignees;
+
+  const handleGroupChange = (value: string) => {
+    const group = value ? linkedGroups.find((g) => String(g.id) === value) : undefined;
+    const validIds = group ? new Set(group.memberList.map((m) => String(m.id))) : null;
+    setForm((f) => ({
+      ...f,
+      groupId: value || undefined,
+      topicId: undefined,
+      assigneeIds: validIds ? f.assigneeIds.filter((id) => validIds.has(id)) : f.assigneeIds,
+    }));
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent size="lg">
@@ -222,13 +240,36 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
             rows={3}
           />
 
+          {linkedGroups.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                value={form.groupId ?? ''}
+                onChange={(e) => handleGroupChange(e.target.value)}
+                label="Joylashuv"
+                options={groupOptions}
+              />
+              {form.groupId && (
+                <Select
+                  value={form.topicId ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, topicId: e.target.value || undefined }))}
+                  label="Mavzu"
+                  options={topicOptions}
+                />
+              )}
+            </div>
+          )}
+
           <div>
-            <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Ijrochilar</label>
-            {assignees.length === 0 ? (
-              <p className="text-caption text-[var(--color-text-muted)]">Xodimlar topilmadi</p>
+            <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">
+              Ijrochilar{selectedGroup && <span className="text-[var(--color-text-muted)] font-normal"> - {selectedGroup.title} a'zolari</span>}
+            </label>
+            {assigneeOptions.length === 0 ? (
+              <p className="text-caption text-[var(--color-text-muted)]">
+                {selectedGroup ? "Bu guruhda a'zo topilmadi" : 'Xodimlar topilmadi'}
+              </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {assignees.map((option) => {
+                {assigneeOptions.map((option) => {
                   const active = form.assigneeIds.includes(option.value);
                   return (
                     <button
@@ -279,25 +320,6 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
               options={REMINDER_OPTIONS}
             />
           </div>
-
-          {linkedGroups.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                value={form.groupId ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, groupId: e.target.value || undefined, topicId: undefined }))}
-                label="Joylashuv"
-                options={groupOptions}
-              />
-              {form.groupId && (
-                <Select
-                  value={form.topicId ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, topicId: e.target.value || undefined }))}
-                  label="Mavzu"
-                  options={topicOptions}
-                />
-              )}
-            </div>
-          )}
 
           <div>
             <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Checklist</label>
