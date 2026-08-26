@@ -15,6 +15,7 @@ import { EmployeesPage } from '@/features/employees/pages/EmployeesPage';
 import { EmployeeProfilePage } from '@/features/employees/pages/EmployeeProfilePage';
 import { AttendancePage } from '@/features/employees/pages/AttendancePage';
 import { KPIPage } from '@/features/employees/pages/KPIPage';
+import { GroupsPage } from '@/features/groups/pages/GroupsPage';
 import { DesignDeptPage } from '@/features/design-dept/pages/DesignDeptPage';
 import { EditingDeptPage } from '@/features/editing-dept/pages/EditingDeptPage';
 import { ShootingPage } from '@/features/shooting/pages/ShootingPage';
@@ -97,6 +98,14 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth allowedRoles={['CEO', 'MENEJER', 'BOSHQARUVCHI']}>
                 <KPIPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/groups',
+            element: (
+              <RequireAuth allowedRoles={['CEO', 'MENEJER', 'BOSHQARUVCHI']}>
+                <GroupsPage />
               </RequireAuth>
             ),
           },

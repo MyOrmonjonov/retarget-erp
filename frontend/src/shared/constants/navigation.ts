@@ -14,6 +14,7 @@ import {
   DollarSign,
   CreditCard,
   Map,
+  MessagesSquare,
 } from 'lucide-react';
 
 export const NAV_ITEMS: NavItem[] = [
@@ -67,6 +68,12 @@ export const NAV_ITEMS: NavItem[] = [
         label: 'KPI nazorat',
         icon: BarChart,
         href: '/kpi',
+        roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
+      },
+      {
+        label: 'Guruhlar',
+        icon: MessagesSquare,
+        href: '/groups',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
       },
     ],

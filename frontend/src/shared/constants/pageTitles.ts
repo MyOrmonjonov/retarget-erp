@@ -7,6 +7,7 @@ export const PAGE_TITLES: Record<string, string> = {
   '/employees/profile': 'Mening profilim',
   '/attendance': 'Davomat',
   '/kpi': 'KPI nazorat',
+  '/groups': 'Guruhlar',
   '/design-dept': "Dizayn bo'limi",
   '/editing-dept': "Montaj bo'limi",
   '/shooting': 'Syomka kalendari',
