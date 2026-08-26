@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, ChevronRight, Building2, Check, LogOut, User, Settings } from 'lucide-react';
+import { Bell, ChevronRight, ChevronLeft, Building2, Check, LogOut, User, Settings } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
@@ -61,7 +61,7 @@ export function Header() {
               aria-label={isSidebarCollapsed ? 'Kengaytirish' : 'Yashirish'}
               className="lg:hidden"
             >
-              <ChevronRight className="h-5 w-5" />
+              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
             </Button>
           </div>
 

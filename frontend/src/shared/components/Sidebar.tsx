@@ -36,7 +36,12 @@ export function Sidebar() {
         aria-label="Asosiy navigatsiya"
       >
         {/* Header / Brand */}
-        <div className={cn('flex items-center justify-between h-16 px-4', isSidebarCollapsed && 'justify-center')}>
+        <div
+          className={cn(
+            'flex items-center h-16 px-4',
+            isSidebarCollapsed ? 'flex-col justify-center gap-2 py-3 h-auto' : 'justify-between'
+          )}
+        >
           {!isSidebarCollapsed && (
             <Link to="/dashboard" aria-label="Retarget ERP - Bosh sahifa">
               <span className="text-[16px] font-bold text-[var(--color-text-primary)]">Retarget ERP</span>
@@ -52,25 +57,26 @@ export function Sidebar() {
             </Link>
           )}
 
-          {/* Collapse/Expand & Mobile Close Button */}
+          {/* Collapse/Expand toggle - always reachable, at every viewport size */}
           <Button
             variant="ghost"
             size="icon"
-            className={cn('lg:hidden', isSidebarCollapsed && 'hidden')}
             onClick={toggleSidebar}
             aria-label={isSidebarCollapsed ? 'Kengaytirish' : 'Yashirish'}
           >
             {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setIsMobileOpen(false)}
-            aria-label="Yopish"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          {!isSidebarCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setIsMobileOpen(false)}
+              aria-label="Yopish"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         {/* Navigation */}
