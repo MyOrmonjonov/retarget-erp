@@ -2,9 +2,11 @@ package uz.taskapp.workspace;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,6 +42,26 @@ public class WorkspaceController {
         WorkspaceEntity workspace = workspaceRepository.save(new WorkspaceEntity(name, language, userId));
         memberRepository.save(new WorkspaceMemberEntity(workspace.getId(), userId, "OWNER"));
         return new WorkspaceResponse(workspace.getId(), workspace.getName(), "OWNER");
+    }
+
+    @PutMapping("/{workspaceId}")
+    @Transactional
+    WorkspaceResponse rename(HttpServletRequest request, @PathVariable Long workspaceId,
+                             @RequestBody RenameWorkspaceRequest body) {
+        Long currentUserId = (Long) request.getAttribute(AuthInterceptor.USER_ID_ATTRIBUTE);
+        WorkspaceMemberEntity membership = memberRepository.findByWorkspaceIdAndUserIdAndActiveTrue(workspaceId, currentUserId)
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED", "Ish maydoniga kirishga ruxsat yo'q"));
+        if (!"OWNER".equals(membership.getRoleCode())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "WORKSPACE_OWNER_ONLY", "Faqat ish maydoni egasi nomini o'zgartira oladi");
+        }
+        if (body.name() == null || body.name().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "WORKSPACE_NAME_REQUIRED", "Ish maydoni nomini kiriting");
+        }
+        WorkspaceEntity workspace = workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "WORKSPACE_NOT_FOUND", "Ish maydoni topilmadi"));
+        workspace.rename(body.name().trim());
+        workspaceRepository.save(workspace);
+        return new WorkspaceResponse(workspace.getId(), workspace.getName(), membership.getRoleCode());
     }
 
     @GetMapping("/{workspaceId}/members")
@@ -88,6 +110,9 @@ public class WorkspaceController {
     }
 
     public record CreateWorkspaceRequest(String name) {
+    }
+
+    public record RenameWorkspaceRequest(String name) {
     }
 
     public record WorkspaceResponse(Long id, String name, String role) {
