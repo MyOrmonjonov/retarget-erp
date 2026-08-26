@@ -43,8 +43,12 @@ export function Sidebar() {
             </Link>
           )}
           {isSidebarCollapsed && (
-            <Link to="/dashboard" className="flex items-center justify-center" aria-label="Retarget ERP - Bosh sahifa">
-              <span className="text-h3 font-bold text-[var(--color-accent)]">R</span>
+            <Link
+              to="/dashboard"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-accent)] transition-transform duration-150 hover:scale-105"
+              aria-label="Retarget ERP - Bosh sahifa"
+            >
+              <span className="text-[16px] font-bold text-black">R</span>
             </Link>
           )}
 
@@ -79,25 +83,33 @@ export function Sidebar() {
                     {section.label}
                   </h4>
                 )}
-                <ul className="space-y-1" role="list">
+                <ul className={cn('space-y-1', isSidebarCollapsed && 'space-y-1.5 flex flex-col items-center')} role="list">
                   {section.children?.map((item) => (
-                    <li key={item.href}>
+                    <li key={item.href} className={isSidebarCollapsed ? 'w-full flex justify-center' : undefined}>
                       <NavLink
                         to={item.href!}
+                        title={isSidebarCollapsed ? item.label : undefined}
                         className={({ isActive }: { isActive: boolean }) =>
                           cn(
-                            'flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors',
-                            'text-[#E6E6E6] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)]',
+                            isSidebarCollapsed
+                              ? 'group flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-95'
+                              : 'flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors',
                             isActive
-                              ? 'bg-[#C6FF3D26] text-[var(--color-accent)]'
-                              : '',
-                            isSidebarCollapsed && 'justify-center'
+                              ? isSidebarCollapsed
+                                ? 'bg-[var(--color-accent)] text-black shadow-[0_2px_10px_-2px_rgba(198,255,61,0.5)]'
+                                : 'bg-[#C6FF3D26] text-[var(--color-accent)]'
+                              : cn(
+                                  'text-[#E6E6E6] hover:text-[var(--color-text-primary)]',
+                                  isSidebarCollapsed ? 'hover:bg-[var(--color-bg-hover)]' : 'hover:bg-[var(--color-bg-hover)]'
+                                )
                           )
                         }
                         aria-current="page"
                         onClick={() => setIsMobileOpen(false)}
                       >
-                        {isSidebarCollapsed && <item.icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />}
+                        {isSidebarCollapsed && (
+                          <item.icon className="h-[19px] w-[19px] flex-shrink-0 transition-transform duration-150 group-hover:scale-110" aria-hidden="true" />
+                        )}
                         {!isSidebarCollapsed && <span className="text-[14px] font-normal truncate">{item.label}</span>}
                         {item.badge && !isSidebarCollapsed && (
                           <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[var(--color-error)] text-white">
