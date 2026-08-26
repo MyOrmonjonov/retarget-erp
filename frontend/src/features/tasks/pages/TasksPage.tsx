@@ -6,39 +6,20 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search, Trash2, Check } from 'lucide-react';
 import type { Task } from '@/shared/types';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
-import { TaskForm } from '../components/TaskForm';
+import { TaskForm, type TaskFormData } from '../components/TaskForm';
+import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus, useDeleteTask } from '../hooks/useTasks';
+import { useEmployees } from '@/features/employees/hooks/useEmployees';
+import { useUser } from '@/features/auth/store/authStore';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
-
-const CURRENT_USER_ID = '1';
 
 const today = new Date();
 const tomorrow = new Date(today);
 tomorrow.setDate(today.getDate() + 1);
-const iso = (d: Date, time: string) => `${d.toISOString().slice(0, 10)}T${time}:00`;
-
-const mockTasks: Task[] = [
-  { id: '1', title: 'Instagram post dizayni', description: '', priority: 'HIGH', status: 'IN_PROGRESS', assigneeId: '1', assigneeName: 'Nodira', assigneeAvatar: undefined, projectId: '1', projectName: 'Coffee Lab', dueDate: iso(today, '18:00'), createdAt: '', updatedAt: '' },
-  { id: '2', title: 'Mijoz bilan qo\'ng\'iroq', description: '', priority: 'MEDIUM', status: 'TODO', assigneeId: '2', assigneeName: 'Aziz', assigneeAvatar: undefined, projectId: '2', projectName: 'UrbanFit', dueDate: iso(today, '15:30'), createdAt: '', updatedAt: '' },
-  { id: '3', title: 'Video export qilish', description: '', priority: 'LOW', status: 'BLOCKED', assigneeId: '3', assigneeName: 'Bekzod', assigneeAvatar: undefined, projectId: '3', projectName: 'NovaTech', dueDate: iso(today, '20:00'), createdAt: '', updatedAt: '' },
-  { id: '4', title: 'Reklama byudjetini yangilash', description: '', priority: 'MEDIUM', status: 'TODO', assigneeId: '2', assigneeName: 'Aziz', assigneeAvatar: undefined, projectId: '1', projectName: 'Coffee Lab', dueDate: iso(tomorrow, '12:00'), createdAt: '', updatedAt: '' },
-  { id: '5', title: 'Syomka rejasini tasdiqlash', description: '', priority: 'HIGH', status: 'TODO', assigneeId: '1', assigneeName: 'Nodira', assigneeAvatar: undefined, projectId: '3', projectName: 'NovaTech', dueDate: iso(tomorrow, '10:00'), createdAt: '', updatedAt: '' },
-];
-
-const mockAssignees = [
-  { value: '1', label: 'Nodira' },
-  { value: '2', label: 'Aziz' },
-  { value: '3', label: 'Bekzod' },
-];
-
-const mockProjects = [
-  { value: '1', label: 'Coffee Lab' },
-  { value: '2', label: 'UrbanFit' },
-  { value: '3', label: 'NovaTech' },
-];
 
 const priorityDotColor: Record<Task['priority'], string> = {
   LOW: 'bg-[var(--color-text-muted)]',
@@ -61,16 +42,22 @@ function isSameDay(dateStr: string, ref: Date) {
 
 type FilterValue = 'FAOL' | 'MENIKI' | 'BUGUN' | 'MUDDATI_OTGAN';
 
-function TaskRow({ task, onEdit, onDelete }: { task: Task; onEdit: () => void; onDelete: () => void }) {
+function TaskRow({ task, onEdit, onComplete, onDelete }: { task: Task; onEdit: () => void; onComplete: () => void; onDelete: () => void }) {
+  const isDone = task.status === 'DONE';
   return (
     <Card className="p-4 flex items-center gap-4">
       <button
         type="button"
-        className="w-5 h-5 rounded-full border-2 border-[var(--color-bg-border)] flex-shrink-0"
+        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+          isDone ? 'bg-[var(--color-success)] border-[var(--color-success)]' : 'border-[var(--color-bg-border)]'
+        }`}
         aria-label="Bajarildi deb belgilash"
-        onClick={onEdit}
-      />
-      <div className="flex-1 min-w-0">
+        onClick={onComplete}
+        disabled={isDone}
+      >
+        {isDone && <Check className="w-3 h-3 text-white" />}
+      </button>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
         <p className="font-medium text-[var(--color-text-primary)] truncate">{task.title}</p>
         <span className="inline-flex items-center gap-1.5 mt-0.5">
           <span className={`w-1.5 h-1.5 rounded-full ${priorityDotColor[task.priority]}`} />
@@ -95,27 +82,50 @@ function TaskRow({ task, onEdit, onDelete }: { task: Task; onEdit: () => void; o
 export function TasksPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterValue>('FAOL');
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+
+  const currentUser = useUser();
+  const { data: tasks = [], isLoading } = useTasks();
+  const { data: employees = [] } = useEmployees();
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const changeStatus = useChangeTaskStatus();
+  const deleteTask = useDeleteTask();
+
+  const assigneeOptions = useMemo(
+    () => employees.map((e) => ({ value: e.userId, label: e.fullName })),
+    [employees]
+  );
+
+  // The task list endpoint never includes assignee names/avatars (only ids) - resolve them
+  // from the already-fetched employee list here rather than making per-task detail calls.
+  const displayTasks = useMemo(() => {
+    const byUserId = new Map(employees.map((e) => [e.userId, e]));
+    return tasks.map((t) => {
+      if (t.assigneeName || !t.assigneeId) return t;
+      const employee = byUserId.get(t.assigneeId);
+      return employee
+        ? { ...t, assigneeName: employee.fullName, assigneeAvatar: employee.avatar }
+        : { ...t, assigneeName: "Noma'lum" };
+    });
+  }, [tasks, employees]);
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isFormLoading, setIsFormLoading] = useState(false);
 
   // Delete confirmation states
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
-  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((t) => {
+    return displayTasks.filter((t) => {
       const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase());
       if (!matchesSearch) return false;
       switch (filter) {
         case 'FAOL':
           return t.status !== 'DONE';
         case 'MENIKI':
-          return t.assigneeId === CURRENT_USER_ID;
+          return currentUser != null && t.assigneeId === currentUser.id;
         case 'BUGUN':
           return isSameDay(t.dueDate, today);
         case 'MUDDATI_OTGAN':
@@ -124,7 +134,7 @@ export function TasksPage() {
           return true;
       }
     });
-  }, [tasks, search, filter]);
+  }, [displayTasks, search, filter, currentUser]);
 
   const todayTasks = filteredTasks.filter((t) => isSameDay(t.dueDate, today));
   const tomorrowTasks = filteredTasks.filter((t) => isSameDay(t.dueDate, tomorrow));
@@ -146,37 +156,18 @@ export function TasksPage() {
   }, []);
 
   const handleFormSubmit = useCallback(async (data: TaskFormData) => {
-    setIsFormLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const estimatedHours = data.estimatedHours ? Number(data.estimatedHours) : undefined;
-    const tags = data.tags ? data.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
-
     if (editingTask) {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === editingTask.id
-            ? { ...t, ...data, estimatedHours, tags, updatedAt: new Date().toISOString() }
-            : t
-        )
-      );
+      await updateTask.mutateAsync({ id: String(editingTask.id), data });
     } else {
-      const newTask: Task = {
-        id: String(Date.now()),
-        ...data,
-        estimatedHours,
-        tags,
-        assigneeName: mockAssignees.find((a) => a.value === data.assigneeId)?.label || '',
-        assigneeAvatar: undefined,
-        projectName: mockProjects.find((p) => p.value === data.projectId)?.label || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setTasks((prev) => [newTask, ...prev]);
+      await createTask.mutateAsync(data);
     }
     handleCloseForm();
-    setIsFormLoading(false);
-  }, [editingTask, handleCloseForm]);
+  }, [editingTask, updateTask, createTask, handleCloseForm]);
+
+  const handleComplete = useCallback((task: Task) => {
+    if (task.status === 'DONE') return;
+    changeStatus.mutate({ id: String(task.id), status: 'DONE' });
+  }, [changeStatus]);
 
   const handleOpenDelete = useCallback((task: Task) => {
     setDeletingTask(task);
@@ -190,12 +181,9 @@ export function TasksPage() {
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingTask) return;
-    setIsDeleteLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    setTasks((prev) => prev.filter((t) => t.id !== deletingTask.id));
+    await deleteTask.mutateAsync(String(deletingTask.id));
     handleCloseDelete();
-    setIsDeleteLoading(false);
-  }, [deletingTask, handleCloseDelete]);
+  }, [deletingTask, deleteTask, handleCloseDelete]);
 
   return (
     <div className="space-y-6 animate-in">
@@ -223,45 +211,53 @@ export function TasksPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        {todayTasks.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-              Bugun ({todayTasks.length})
-            </h3>
-            {todayTasks.map((task) => (
-              <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onDelete={() => handleOpenDelete(task)} />
-            ))}
-          </div>
-        )}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-[68px] w-full rounded-[14px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {todayTasks.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                Bugun ({todayTasks.length})
+              </h3>
+              {todayTasks.map((task) => (
+                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onDelete={() => handleOpenDelete(task)} />
+              ))}
+            </div>
+          )}
 
-        {tomorrowTasks.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-              Ertaga ({tomorrowTasks.length})
-            </h3>
-            {tomorrowTasks.map((task) => (
-              <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onDelete={() => handleOpenDelete(task)} />
-            ))}
-          </div>
-        )}
+          {tomorrowTasks.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                Ertaga ({tomorrowTasks.length})
+              </h3>
+              {tomorrowTasks.map((task) => (
+                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onDelete={() => handleOpenDelete(task)} />
+              ))}
+            </div>
+          )}
 
-        {otherTasks.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-              Boshqa ({otherTasks.length})
-            </h3>
-            {otherTasks.map((task) => (
-              <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onDelete={() => handleOpenDelete(task)} />
-            ))}
-          </div>
-        )}
-      </div>
+          {otherTasks.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                Boshqa ({otherTasks.length})
+              </h3>
+              {otherTasks.map((task) => (
+                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onDelete={() => handleOpenDelete(task)} />
+              ))}
+            </div>
+          )}
 
-      {filteredTasks.length === 0 && (
-        <Card className="py-12 text-center">
-          <p className="text-[var(--color-text-secondary)]">Vazifalar topilmadi</p>
-        </Card>
+          {filteredTasks.length === 0 && (
+            <Card className="py-12 text-center">
+              <p className="text-[var(--color-text-secondary)]">Vazifalar topilmadi</p>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* Create/Edit Form Modal */}
@@ -270,9 +266,8 @@ export function TasksPage() {
         onClose={handleCloseForm}
         onSubmit={handleFormSubmit}
         initialData={editingTask}
-        isLoading={isFormLoading}
-        assignees={mockAssignees}
-        projects={mockProjects}
+        isLoading={createTask.isPending || updateTask.isPending}
+        assignees={assigneeOptions}
       />
 
       {/* Delete Confirmation Modal */}
@@ -280,7 +275,7 @@ export function TasksPage() {
         isOpen={isDeleteOpen}
         onClose={handleCloseDelete}
         onConfirm={handleConfirmDelete}
-        isLoading={isDeleteLoading}
+        isLoading={deleteTask.isPending}
         title="Vazifani o'chirish"
         description="Bu vazifa doimiy o'chiriladi. Davom etishni xohlaysizmi?"
         itemName={deletingTask?.title}
@@ -288,6 +283,3 @@ export function TasksPage() {
     </div>
   );
 }
-
-// Import type for the form data
-import type { TaskFormData } from '../components/TaskForm';
