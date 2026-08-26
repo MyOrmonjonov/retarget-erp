@@ -1,47 +1,69 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/table';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { StatCard } from '@/shared/components/StatCard';
+import { financeApi } from '../api/financeApi';
+import type { InvoiceStatus, ExpenseCategory } from '@/shared/types';
 
-interface ProjectFinance {
-  id: string;
-  name: string;
-  budget: number;
-  spent: number;
+function money(value: number, currency = 'UZS') {
+  return `${value.toLocaleString('en-US')} ${currency}`;
 }
 
-interface PayrollRow {
-  id: string;
-  name: string;
-  base: number;
-  kpiBonus: number;
-}
+const invoiceStatusLabel: Record<InvoiceStatus, string> = {
+  DRAFT: 'Qoralama',
+  SENT: 'Yuborildi',
+  PAID: "To'landi",
+  OVERDUE: 'Muddati o\'tgan',
+  CANCELLED: 'Bekor qilingan',
+};
 
-const projectFinances: ProjectFinance[] = [
-  { id: '1', name: 'Instagram Rebrand', budget: 8000, spent: 5200 },
-  { id: '2', name: 'Winter Campaign', budget: 12000, spent: 9000 },
-  { id: '3', name: 'Product Launch', budget: 15000, spent: 11500 },
-  { id: '4', name: 'Corporate Rebrand', budget: 6000, spent: 5800 },
-];
+const invoiceStatusVariant: Record<InvoiceStatus, 'default' | 'success' | 'warning' | 'error'> = {
+  DRAFT: 'default',
+  SENT: 'warning',
+  PAID: 'success',
+  OVERDUE: 'error',
+  CANCELLED: 'error',
+};
 
-const payroll: PayrollRow[] = [
-  { id: '1', name: 'Sardor A.', base: 1200, kpiBonus: 380 },
-  { id: '2', name: 'Malika Y.', base: 900, kpiBonus: 310 },
-  { id: '3', name: 'Aziz K.', base: 850, kpiBonus: 260 },
-  { id: '4', name: 'Bekzod T.', base: 700, kpiBonus: 180 },
-];
-
-function usd(value: number) {
-  return `$${value.toLocaleString('en-US')}`;
-}
+const expenseCategoryLabel: Record<ExpenseCategory, string> = {
+  SALARY: 'Ish haqi',
+  RENT: 'Ijara',
+  EQUIPMENT: 'Jihoz',
+  SOFTWARE: 'Dastur',
+  MARKETING: 'Marketing',
+  TRAVEL: 'Safar',
+  OTHER: 'Boshqa',
+};
 
 export function FinancePage() {
-  const totalRevenue = 84200;
-  const totalExpenses = 52100;
-  const netProfit = totalRevenue - totalExpenses;
-  const pendingPayments = 6400;
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ['finance', 'invoices'],
+    queryFn: financeApi.listInvoices,
+  });
+  const { data: payments = [] } = useQuery({
+    queryKey: ['finance', 'payments'],
+    queryFn: financeApi.listPayments,
+  });
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['finance', 'expenses'],
+    queryFn: financeApi.listExpenses,
+  });
+
+  const stats = useMemo(() => {
+    const totalRevenue = invoices.filter((i) => i.status === 'PAID').reduce((sum, i) => sum + i.amount, 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const pendingPayments = payments
+      .filter((p) => p.status === 'PENDING' || p.status === 'OVERDUE')
+      .reduce((sum, p) => sum + p.amount, 0);
+    return { totalRevenue, totalExpenses, netProfit: totalRevenue - totalExpenses, pendingPayments };
+  }, [invoices, expenses, payments]);
+
+  const isLoading = invoicesLoading || expensesLoading;
 
   return (
     <div className="space-y-6 animate-in">
@@ -51,73 +73,84 @@ export function FinancePage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Umumiy daromad" value={usd(totalRevenue)} valueClassName="text-[var(--color-success)]" />
-        <StatCard title="Xarajatlar" value={usd(totalExpenses)} valueClassName="text-[var(--color-warning)]" />
-        <StatCard title="Sof foyda" value={usd(netProfit)} valueClassName="text-[var(--color-success)]" />
-        <StatCard title="Kutilayotgan to'lovlar" value={usd(pendingPayments)} />
+        <StatCard title="Umumiy daromad" value={money(stats.totalRevenue)} valueClassName="text-[var(--color-success)]" isLoading={isLoading} />
+        <StatCard title="Xarajatlar" value={money(stats.totalExpenses)} valueClassName="text-[var(--color-warning)]" isLoading={isLoading} />
+        <StatCard title="Sof foyda" value={money(stats.netProfit)} valueClassName={stats.netProfit >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'} isLoading={isLoading} />
+        <StatCard title="Kutilayotgan to'lovlar" value={money(stats.pendingPayments)} isLoading={isLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Projects Finance */}
+        {/* Invoices */}
         <Card>
           <CardHeader>
-            <CardTitle>Loyihalar bo'yicha moliya</CardTitle>
+            <CardTitle>Hisob-fakturalar</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loyiha</TableHead>
-                  <TableHead>Byudjet</TableHead>
-                  <TableHead>Sarflandi</TableHead>
-                  <TableHead>Foyda</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projectFinances.map((p) => {
-                  const profit = p.budget - p.spent;
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium text-[var(--color-text-primary)]">{p.name}</TableCell>
-                      <TableCell className="text-[var(--color-text-secondary)]">{usd(p.budget)}</TableCell>
-                      <TableCell className="text-[var(--color-text-secondary)]">{usd(p.spent)}</TableCell>
-                      <TableCell className={profit >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}>
-                        {profit >= 0 ? '+' : ''}{usd(profit)}
+            {invoicesLoading ? (
+              <div className="p-6 space-y-3">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
+              </div>
+            ) : invoices.length === 0 ? (
+              <p className="text-center text-[var(--color-text-secondary)] py-8">Hisob-fakturalar topilmadi</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>№</TableHead>
+                    <TableHead>Mijoz</TableHead>
+                    <TableHead>Summa</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium text-[var(--color-text-primary)]">{inv.number}</TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{inv.clientName}</TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{money(inv.amount, inv.currency)}</TableCell>
+                      <TableCell>
+                        <Badge variant={invoiceStatusVariant[inv.status]} size="sm">{invoiceStatusLabel[inv.status]}</Badge>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
-        {/* Payroll */}
+        {/* Expenses */}
         <Card>
           <CardHeader>
-            <CardTitle>Xodimlar oyligi</CardTitle>
+            <CardTitle>Xarajatlar</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Xodim</TableHead>
-                  <TableHead>Baza</TableHead>
-                  <TableHead>KPI bonus</TableHead>
-                  <TableHead>Jami</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payroll.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium text-[var(--color-text-primary)]">{row.name}</TableCell>
-                    <TableCell className="text-[var(--color-text-secondary)]">{usd(row.base)}</TableCell>
-                    <TableCell className="text-[var(--color-text-secondary)]">{usd(row.kpiBonus)}</TableCell>
-                    <TableCell className="font-medium text-[var(--color-text-primary)]">{usd(row.base + row.kpiBonus)}</TableCell>
+            {expensesLoading ? (
+              <div className="p-6 space-y-3">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
+              </div>
+            ) : expenses.length === 0 ? (
+              <p className="text-center text-[var(--color-text-secondary)] py-8">Xarajatlar topilmadi</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nomi</TableHead>
+                    <TableHead>Turi</TableHead>
+                    <TableHead>Summa</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {expenses.map((exp) => (
+                    <TableRow key={exp.id}>
+                      <TableCell className="font-medium text-[var(--color-text-primary)]">{exp.title}</TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{expenseCategoryLabel[exp.category]}</TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{money(exp.amount, exp.currency)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -7,21 +7,14 @@ import { Input } from '@/shared/ui/input';
 import { Select } from '@/shared/ui/select';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import type { ShootingEvent, ShootingEventStatus, ShootingEventType } from '@/shared/types';
-
-type EventWithOperator = ShootingEvent & { operatorName: string };
-
-const mockEvents: EventWithOperator[] = [
-  { id: '1', title: 'Coffee Lab — Mahsulot foto', date: '2026-08-28', startTime: '10:00', endTime: '12:00', location: 'Studio A · Mahsulot foto', type: 'PHOTO', status: 'CONFIRMED', team: ['1'], operatorName: 'Jasur', description: '', createdAt: '', updatedAt: '' },
-  { id: '2', title: 'UrbanFit — Winter kampaniya video', date: '2026-08-28', startTime: '13:30', endTime: '17:00', location: 'Tashqi maydon · Video', type: 'VIDEO', status: 'SCHEDULED', team: ['2'], operatorName: 'Bekzod', description: '', createdAt: '', updatedAt: '' },
-  { id: '3', title: 'NovaTech — Ofis intervyu', date: '2026-08-28', startTime: '16:00', endTime: '17:30', location: 'Mijoz ofisi · Intervyu', type: 'INTERVIEW', status: 'PLANNING', team: ['1'], operatorName: 'Jasur', description: '', createdAt: '', updatedAt: '' },
-  { id: '4', title: 'Trendy Wear — Lookbook', date: '2026-08-29', startTime: '09:00', endTime: '13:00', location: 'Studio B · Foto', type: 'PHOTO', status: 'SCHEDULED', team: ['2'], operatorName: 'Bekzod', description: '', createdAt: '', updatedAt: '' },
-  { id: '5', title: 'MegaGroup — Korporativ tadbir', date: '2026-08-26', startTime: '10:00', endTime: '15:00', location: 'Ofis · Tadbir', type: 'EVENT', status: 'CONFIRMED', team: ['1', '2'], operatorName: 'Jasur', description: '', createdAt: '', updatedAt: '' },
-];
+import { useShootingEvents, useCreateShootingEvent, useUpdateShootingEvent } from '../hooks/useShootingEvents';
+import { shootingApi } from '../api/shootingApi';
 
 const statusBadgeVariant: Record<ShootingEventStatus, 'default' | 'warning' | 'success' | 'error'> = {
   PLANNING: 'default',
@@ -42,9 +35,12 @@ const statusLabels: Record<ShootingEventStatus, string> = {
 const weekdayLabels = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak'];
 
 export function ShootingPage() {
-  const [events, setEvents] = useState<EventWithOperator[]>(mockEvents);
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(2026, 7, 28), { weekStartsOn: 1 }));
-  const [selectedDate, setSelectedDate] = useState(new Date(2026, 7, 28));
+  const { data: events = [], isLoading } = useShootingEvents();
+  const createEvent = useCreateShootingEvent();
+  const updateEvent = useUpdateShootingEvent();
+
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ShootingEvent | null>(null);
 
@@ -74,23 +70,26 @@ export function ShootingPage() {
     setEditingEvent(null);
   }, []);
 
-  const handleFormSubmit = useCallback((data: ShootingEventFormData) => {
+  const handleFormSubmit = useCallback(async (data: ShootingEventFormData) => {
+    const input = {
+      title: data.title,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      location: data.location,
+      type: data.type,
+      description: data.description || undefined,
+    };
     if (editingEvent) {
-      setEvents((prev) =>
-        prev.map((e) => (e.id === editingEvent.id ? { ...e, ...data, updatedAt: new Date().toISOString() } : e))
-      );
+      await updateEvent.mutateAsync({ id: String(editingEvent.id), input });
+      if (data.status !== editingEvent.status) {
+        await shootingApi.changeStatus(String(editingEvent.id), data.status);
+      }
     } else {
-      const newEvent: EventWithOperator = {
-        id: String(Date.now()),
-        ...data,
-        operatorName: 'Siz',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setEvents((prev) => [...prev, newEvent]);
+      await createEvent.mutateAsync(input);
     }
     handleCloseForm();
-  }, [editingEvent, handleCloseForm]);
+  }, [editingEvent, createEvent, updateEvent, handleCloseForm]);
 
   return (
     <div className="space-y-6 animate-in">
@@ -143,7 +142,9 @@ export function ShootingPage() {
           {format(selectedDate, 'EEEE, d-MMMM', { locale: uz })} syomkalari
         </h3>
         <div className="space-y-3">
-          {dayEvents.length === 0 ? (
+          {isLoading ? (
+            [...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
+          ) : dayEvents.length === 0 ? (
             <Card className="py-10 text-center">
               <p className="text-[var(--color-text-secondary)]">Bu kunga syomka rejalashtirilmagan</p>
             </Card>
@@ -158,10 +159,16 @@ export function ShootingPage() {
                     <p className="font-medium text-[var(--color-text-primary)] truncate">{event.title}</p>
                     <p className="text-caption text-[var(--color-text-muted)] truncate">{event.location}</p>
                   </div>
-                  <div className="hidden sm:flex items-center gap-2">
-                    <Avatar name={event.operatorName} size="sm" />
-                    <span className="text-caption text-[var(--color-text-secondary)]">{event.operatorName}</span>
-                  </div>
+                  {event.team.length > 0 && (
+                    <div className="hidden sm:flex items-center gap-1">
+                      {event.team.slice(0, 3).map((memberId) => (
+                        <Avatar key={memberId} name={`#${memberId}`} size="sm" />
+                      ))}
+                      {event.team.length > 3 && (
+                        <span className="text-caption text-[var(--color-text-secondary)]">+{event.team.length - 3}</span>
+                      )}
+                    </div>
+                  )}
                   <Badge variant={statusBadgeVariant[event.status]}>{statusLabels[event.status]}</Badge>
                 </CardContent>
               </Card>
@@ -177,6 +184,7 @@ export function ShootingPage() {
         onSubmit={handleFormSubmit}
         initialData={editingEvent}
         defaultDate={selectedDate}
+        isLoading={createEvent.isPending || updateEvent.isPending}
       />
     </div>
   );
@@ -191,7 +199,6 @@ interface ShootingEventFormData {
   location: string;
   type: ShootingEventType;
   status: ShootingEventStatus;
-  team: string[];
   description: string;
 }
 
@@ -210,12 +217,13 @@ const statusOptions = [
   { value: 'CANCELLED', label: 'Bekor qilingan' },
 ];
 
-function EventForm({ isOpen, onClose, onSubmit, initialData, defaultDate }: {
+function EventForm({ isOpen, onClose, onSubmit, initialData, defaultDate, isLoading }: {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ShootingEventFormData) => void;
   initialData: ShootingEvent | null;
   defaultDate: Date | null;
+  isLoading?: boolean;
 }) {
   const isEdit = !!initialData;
 
@@ -249,27 +257,26 @@ function EventForm({ isOpen, onClose, onSubmit, initialData, defaultDate }: {
             location: fd.get('location') as string,
             type: fd.get('type') as ShootingEventType,
             status: fd.get('status') as ShootingEventStatus,
-            team: [],
             description: fd.get('description') as string,
           });
         }} className="p-4 space-y-4">
-          <Input name="title" label="Loyiha" placeholder="Mas: Coffee Lab — Mahsulot foto" value={initialData?.title || ''} required />
+          <Input name="title" label="Loyiha" placeholder="Mas: Coffee Lab — Mahsulot foto" defaultValue={initialData?.title || ''} required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input name="date" type="date" label="Sana" value={initialData?.date || (defaultDate ? format(defaultDate, 'yyyy-MM-dd') : '')} required />
+            <Input name="date" type="date" label="Sana" defaultValue={initialData?.date || (defaultDate ? format(defaultDate, 'yyyy-MM-dd') : '')} required />
             <div className="grid grid-cols-2 gap-2">
-              <Input name="startTime" type="time" label="Vaqt" value={initialData?.startTime || ''} required />
-              <Input name="endTime" type="time" label="Tugash" value={initialData?.endTime || ''} required />
+              <Input name="startTime" type="time" label="Vaqt" defaultValue={initialData?.startTime || ''} required />
+              <Input name="endTime" type="time" label="Tugash" defaultValue={initialData?.endTime || ''} required />
             </div>
           </div>
-          <Input name="location" label="Manzil" placeholder="Mas: Studio A" value={initialData?.location || ''} required />
+          <Input name="location" label="Manzil" placeholder="Mas: Studio A" defaultValue={initialData?.location || ''} required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select name="type" label="Tur" options={typeOptions} value={initialData?.type || 'PHOTO'} required />
-            <Select name="status" label="Holati" options={statusOptions} value={initialData?.status || 'PLANNING'} required />
+            <Select name="type" label="Tur" options={typeOptions} defaultValue={initialData?.type || 'PHOTO'} required />
+            <Select name="status" label="Holati" options={statusOptions} defaultValue={initialData?.status || 'PLANNING'} required />
           </div>
-          <textarea name="description" className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-bg-border)] rounded-lg text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent resize-none" rows={3} placeholder="Tavsif">{initialData?.description || ''}</textarea>
+          <textarea name="description" defaultValue={initialData?.description || ''} className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-bg-border)] rounded-lg text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent resize-none" rows={3} placeholder="Tavsif" />
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-bg-border)]">
-            <Button type="button" variant="secondary" onClick={onClose}>Bekor qilish</Button>
-            <Button type="submit" variant="primary">{isEdit ? 'Saqlash' : 'Saqlash'}</Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>Bekor qilish</Button>
+            <Button type="submit" variant="primary" loading={isLoading}>Saqlash</Button>
           </div>
         </form>
       </div>
