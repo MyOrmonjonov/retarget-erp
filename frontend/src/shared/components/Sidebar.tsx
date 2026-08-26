@@ -1,8 +1,7 @@
 'use client';
 
-import * as React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { NAV_ITEMS, filterNavByRole } from '@/shared/constants/navigation';
 import { Button } from '@/shared/ui/button';
@@ -10,8 +9,9 @@ import { ScrollArea } from '@/shared/ui/scroll-area';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export function Sidebar() {
-  const { user, isSidebarCollapsed, toggleSidebar } = useAuthStore();
-  const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const { user, isSidebarCollapsed, toggleSidebar, isMobileNavOpen, setMobileNavOpen } = useAuthStore();
+  const isMobileOpen = isMobileNavOpen;
+  const setIsMobileOpen = setMobileNavOpen;
 
   const navItems = user ? filterNavByRole(NAV_ITEMS, user.role) : [];
 
@@ -131,17 +131,6 @@ export function Sidebar() {
           </nav>
         </ScrollArea>
       </aside>
-
-      {/* Mobile Menu Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed bottom-4 left-4 z-[var(--z-sticky)] lg:hidden"
-        onClick={() => setIsMobileOpen(true)}
-        aria-label="Menyuni ochish"
-      >
-        <Menu className="h-6 w-6" />
-      </Button>
     </>
   );
 }

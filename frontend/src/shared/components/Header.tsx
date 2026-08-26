@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, ChevronRight, ChevronLeft, Building2, Check, LogOut, User, Settings } from 'lucide-react';
+import { Bell, Menu, Building2, Check, LogOut, User, Settings } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
@@ -29,7 +29,7 @@ import { getPageTitle } from '@/shared/constants/pageTitles';
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isSidebarCollapsed, toggleSidebar, workspaces, activeWorkspaceId } = useAuthStore();
+  const { user, logout, isSidebarCollapsed, setMobileNavOpen, workspaces, activeWorkspaceId } = useAuthStore();
   const switchWorkspace = useSwitchWorkspace();
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -45,23 +45,21 @@ export function Header() {
     <TooltipProvider>
       <header
         className={cn(
-          'fixed top-0 right-0 z-[var(--z-sticky)] h-[72px] bg-[var(--color-bg-primary)] border-b border-[var(--color-bg-border)] transition-all duration-300',
-          isSidebarCollapsed ? 'left-16' : 'left-60',
-          'lg:left-60'
+          'fixed top-0 right-0 left-0 z-[var(--z-sticky)] h-[72px] bg-[var(--color-bg-primary)] border-b border-[var(--color-bg-border)] transition-all duration-300',
+          isSidebarCollapsed ? 'lg:left-16' : 'lg:left-60'
         )}
         role="banner"
       >
         <div className="flex h-full items-center justify-between px-4 gap-4">
-          {/* Left: Mobile Menu Toggle */}
+          {/* Left: Mobile Nav Hamburger - opens the slide-over drawer, always at the top on mobile */}
           <div className="flex items-center gap-3 lg:hidden">
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleSidebar}
-              aria-label={isSidebarCollapsed ? 'Kengaytirish' : 'Yashirish'}
-              className="lg:hidden"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Menyuni ochish"
             >
-              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
 

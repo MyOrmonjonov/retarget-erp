@@ -10,6 +10,8 @@ interface AuthState {
   activeWorkspaceId: number | null;
   isAuthenticated: boolean;
   isSidebarCollapsed: boolean;
+  /** Mobile slide-over drawer open/closed - transient UI state, not persisted across reloads. */
+  isMobileNavOpen: boolean;
 
   // Actions
   setAuth: (user: User, accessToken: string, workspaces: AuthWorkspace[]) => void;
@@ -19,6 +21,7 @@ interface AuthState {
   clearAuth: () => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setMobileNavOpen: (open: boolean) => void;
 
   // Role helpers
   hasRole: (roles: UserRole[]) => boolean;
@@ -44,6 +47,7 @@ export const useAuthStore = create<AuthState>()(
       activeWorkspaceId: null,
       isAuthenticated: false,
       isSidebarCollapsed: false,
+      isMobileNavOpen: false,
 
       // Actions
       setAuth: (user, accessToken, workspaces) => {
@@ -92,6 +96,8 @@ export const useAuthStore = create<AuthState>()(
         set({
           isSidebarCollapsed: collapsed,
         }),
+
+      setMobileNavOpen: (open) => set({ isMobileNavOpen: open }),
 
       // Role helpers
       hasRole: (roles) => {
