@@ -1,101 +1,95 @@
 import { api } from '@/shared/lib/api';
-import type { DashboardStats } from '@/shared/types';
-import { mockDashboardApi } from './mockDashboardApi';
+import type { DashboardStats, ProjectStatus } from '@/shared/types';
 
-// Check if we should use mock data (when backend is not available or explicitly disabled)
-const USE_MOCK_API = import.meta.env.VITE_USE_REAL_API !== 'true';
+interface DashboardOverviewDto {
+  totalProjects: number;
+  activeProjects: number;
+  totalTasks: number;
+  completedTasks: number;
+  totalEmployees: number;
+  pendingApprovals: number;
+  motivationScore: number;
+  teamLoad: { department: string; load: number; employeeCount: number }[];
+  topEmployee: {
+    id: number;
+    name: string;
+    avatar: string | null;
+    position: string | null;
+    kpiScore: number;
+    completedTasks: number;
+    projectCount: number;
+  } | null;
+  projectStatus: { id: number; name: string; client: string; status: ProjectStatus; progress: number }[];
+}
 
-/**
- * Dashboard API - Uses mock data in development, real API in production
- */
+let overviewPromise: Promise<DashboardOverviewDto> | null = null;
+
+/** All 5 dashboard queries share one backend call (react-query dedupes by queryKey; this module-level
+ * cache is a safety net for the rare case something calls it outside of react-query). */
+function fetchOverview(): Promise<DashboardOverviewDto> {
+  if (!overviewPromise) {
+    overviewPromise = api.get<DashboardOverviewDto>('/dashboard').then((r) => r.data);
+    overviewPromise.finally(() => { overviewPromise = null; });
+  }
+  return overviewPromise;
+}
+
 export const dashboardApi = {
-  /** Get dashboard statistics */
   getStats: async (): Promise<DashboardStats> => {
-    if (USE_MOCK_API) {
-      return mockDashboardApi.getStats();
-    }
-    const response = await api.get<DashboardStats>('/dashboard/stats');
-    return response.data;
+    const data = await fetchOverview();
+    return {
+      totalProjects: data.totalProjects,
+      activeProjects: data.activeProjects,
+      totalTasks: data.totalTasks,
+      completedTasks: data.completedTasks,
+      totalEmployees: data.totalEmployees,
+      pendingApprovals: data.pendingApprovals,
+      motivationScore: data.motivationScore,
+      teamLoad: data.teamLoad,
+      topEmployee: data.topEmployee
+        ? {
+            id: String(data.topEmployee.id),
+            name: data.topEmployee.name,
+            avatar: data.topEmployee.avatar ?? undefined,
+            kpiScore: data.topEmployee.kpiScore,
+            completedTasks: data.topEmployee.completedTasks,
+          }
+        : null,
+    };
   },
 
-  /** Get project status list for dashboard */
-  getProjectStatus: async (): Promise<
-    Array<{
-      id: number;
-      name: string;
-      client: string;
-      status: string;
-      statusColor: string;
-      progress: number;
-    }>
-  > => {
-    if (USE_MOCK_API) {
-      return mockDashboardApi.getProjectStatus();
-    }
-    const response = await api.get<Array<{
-      id: number;
-      name: string;
-      client: string;
-      status: string;
-      statusColor: string;
-      progress: number;
-    }>>('/dashboard/projects/status');
-    return response.data;
+  getProjectStatus: async () => {
+    const data = await fetchOverview();
+    return data.projectStatus.map((p) => ({
+      id: p.id,
+      name: p.name,
+      client: p.client,
+      status: p.status,
+      progress: p.progress,
+    }));
   },
 
-  /** Get top employee */
-  getTopEmployee: async (): Promise<
-    | null
-    | {
-        id: string;
-        name: string;
-        avatar?: string;
-        position: string;
-        kpiScore: number;
-        completedTasks: number;
-        onTimeRate: number;
-      }
-  > => {
-    if (USE_MOCK_API) {
-      return mockDashboardApi.getTopEmployee();
-    }
-    const response = await api.get<{
-      id: string;
-      name: string;
-      avatar?: string;
-      position: string;
-      kpiScore: number;
-      completedTasks: number;
-      onTimeRate: number;
-    } | null>('/dashboard/top-employee');
-    return response.data;
+  getTopEmployee: async () => {
+    const data = await fetchOverview();
+    if (!data.topEmployee) return null;
+    return {
+      id: String(data.topEmployee.id),
+      name: data.topEmployee.name,
+      avatar: data.topEmployee.avatar ?? undefined,
+      position: data.topEmployee.position ?? '',
+      kpiScore: data.topEmployee.kpiScore,
+      completedTasks: data.topEmployee.completedTasks,
+      projectCount: data.topEmployee.projectCount,
+    };
   },
 
-  /** Get team load by department */
-  getTeamLoad: async (): Promise<
-    Array<{
-      department: string;
-      load: number;
-      employeeCount: number;
-    }>
-  > => {
-    if (USE_MOCK_API) {
-      return mockDashboardApi.getTeamLoad();
-    }
-    const response = await api.get<Array<{
-      department: string;
-      load: number;
-      employeeCount: number;
-    }>>('/dashboard/team-load');
-    return response.data;
+  getTeamLoad: async () => {
+    const data = await fetchOverview();
+    return data.teamLoad;
   },
 
-  /** Get motivation score */
   getMotivationScore: async (): Promise<number> => {
-    if (USE_MOCK_API) {
-      return mockDashboardApi.getMotivationScore();
-    }
-    const response = await api.get<number>('/dashboard/motivation');
-    return response.data;
+    const data = await fetchOverview();
+    return data.motivationScore;
   },
 };

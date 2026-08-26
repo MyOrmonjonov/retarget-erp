@@ -8,12 +8,14 @@ import { Progress } from '@/shared/ui/progress';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useDashboardStats, useProjectStatus, useTopEmployee, useTeamLoad, useMotivationScore } from '../hooks/useDashboard';
+import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/shared/types';
 
-const statusStyle: Record<string, { backgroundColor: string; color: string }> = {
-  Jarayonda: { backgroundColor: '#23261A', color: '#C6FF3D' },
-  Rejalashtirildi: { backgroundColor: '#2A2A2E', color: '#9A9A9A' },
-  Yakunlandi: { backgroundColor: '#16301F', color: '#34C759' },
-  "To'xtatildi": { backgroundColor: '#3A1F1F', color: '#FF3B30' },
+const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: string }> = {
+  ACTIVE: { backgroundColor: '#23261A', color: '#C6FF3D' },
+  PLANNING: { backgroundColor: '#2A2A2E', color: '#9A9A9A' },
+  ON_HOLD: { backgroundColor: '#3A2E1F', color: '#FF9F0A' },
+  COMPLETED: { backgroundColor: '#16301F', color: '#34C759' },
+  CANCELLED: { backgroundColor: '#3A1F1F', color: '#FF3B30' },
 };
 
 const MOTIVATION_STAGES = ['Past', 'Zaif', 'Nazorat', 'Yaxshi', "A'lo"];
@@ -101,7 +103,7 @@ export function DashboardPage() {
                         <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
                       </div>
                     </div>
-                    <Badge style={statusStyle[project.status]}>{project.status}</Badge>
+                    <Badge style={statusStyle[project.status]}>{PROJECT_STATUS_LABELS[project.status]}</Badge>
                   </div>
                 ))}
               </div>
@@ -148,7 +150,7 @@ export function DashboardPage() {
                     </div>
                     <div className="rounded-[10px] bg-[#23261A] px-2 py-2 text-center">
                       <p className="text-caption text-[var(--color-text-muted)]">Loyihalar</p>
-                      <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.onTimeRate}</p>
+                      <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.projectCount}</p>
                     </div>
                   </div>
                 </>
