@@ -3,6 +3,7 @@ package uz.taskapp.auth;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -20,6 +21,11 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            // CORS preflight requests never carry the Authorization header (browsers strip it),
+            // so they must pass through untouched or every cross-origin authenticated call breaks.
+            return true;
+        }
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header == null || !header.startsWith("Bearer ")) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "AUTH_REQUIRED", "Telegram orqali kirish talab qilinadi");
