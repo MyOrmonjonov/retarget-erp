@@ -167,7 +167,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
               error={errors.dueDate?.message}
             />
             <Input
-              {...register('estimatedHours', { valueAsNumber: true })}
+              {...register('estimatedHours', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
               type="number"
               label="Taxminiy soatlar"
               placeholder="Mas: 8"

@@ -185,7 +185,7 @@ export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'PROBATION';
 
 export interface Employee extends BaseEntity {
   fullName: string;
-  email: string;
+  email?: string;
   phone?: string;
   avatar?: string;
   role: UserRole;

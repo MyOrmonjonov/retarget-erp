@@ -155,7 +155,7 @@ export function ProjectForm({ isOpen, onClose, onSubmit, onDelete, initialData, 
             />
           </div>
           <Input
-            {...register('budget', { valueAsNumber: true })}
+            {...register('budget', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
             type="number"
             label="Byudjet (so'm)"
             placeholder="Mas: 50000000"

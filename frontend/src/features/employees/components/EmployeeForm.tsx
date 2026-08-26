@@ -1,26 +1,25 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Select } from '@/shared/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/ui/dialog';
-import type { UserRole, EmployeeStatus } from '@/shared/types';
+import { Avatar } from '@/shared/ui/avatar';
+import type { Employee, EmployeeStatus, UserRole } from '@/shared/types';
+import type { WorkspaceMember } from '../api/employeesApi';
 
 const employeeSchema = z.object({
-  fullName: z.string().min(2, 'Ism kamida 2 ta belgi bo\'lishi kerak'),
-  email: z.string().email('Noto\'g\'ri email formati'),
+  userId: z.string().optional(),
+  email: z.string().email("Noto'g'ri email formati").optional().or(z.literal('')),
   phone: z.string().optional(),
   role: z.enum(['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM', 'OPERATOR']),
-  department: z.string().min(1, 'Bo\'limni tanlang'),
-  position: z.string().min(1, 'Lavozimni kiriting'),
-  status: z.enum(['ACTIVE', 'ON_LEAVE', 'TERMINATED', 'PROBATION']),
-  hireDate: z.string().min(1, 'Ishga qabul sanasini kiriting'),
-  avatar: z.string().url().optional().or(z.literal('')),
-  kpiScore: z.number().min(0).max(100).optional().or(z.string().refine(val => val === '' || (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100), '0-100 oralig\'ida bo\'lishi kerak')),
+  department: z.string().optional(),
+  position: z.string().optional(),
+  hireDate: z.string().optional(),
 });
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -29,82 +28,57 @@ interface EmployeeFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: EmployeeFormData) => Promise<void>;
-  initialData?: EmployeeData | null;
+  initialData?: (Employee & { userId: string }) | null;
+  availableMembers: WorkspaceMember[];
   isLoading?: boolean;
 }
 
-interface EmployeeData {
-  fullName: string;
-  email: string;
-  phone?: string;
-  role: UserRole;
-  department: string;
-  position: string;
-  status: EmployeeStatus;
-  hireDate: string;
-  avatar?: string;
-  kpiScore?: number;
-}
-
-export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, isLoading }: EmployeeFormProps) {
+export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, availableMembers, isLoading }: EmployeeFormProps) {
   const isEdit = !!initialData;
 
   const {
     register,
     handleSubmit,
+    control,
     reset,
     formState: { errors },
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
-      fullName: '',
+      userId: '',
       email: '',
       phone: '',
       role: 'HODIM' as UserRole,
       department: '',
       position: '',
-      status: 'ACTIVE' as EmployeeStatus,
       hireDate: '',
-      avatar: '',
-      kpiScore: '',
     },
   });
 
   useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        reset({
-          fullName: initialData.fullName,
-          email: initialData.email,
-          phone: initialData.phone || '',
-          role: initialData.role,
-          department: initialData.department,
-          position: initialData.position,
-          status: initialData.status,
-          hireDate: initialData.hireDate.split('T')[0],
-          avatar: initialData.avatar || '',
-          kpiScore: initialData.kpiScore?.toString() || '',
-        });
-      } else {
-        reset({
-          fullName: '',
-          email: '',
-          phone: '',
-          role: 'HODIM' as UserRole,
-          department: '',
-          position: '',
-          status: 'ACTIVE' as EmployeeStatus,
-          hireDate: '',
-          avatar: '',
-          kpiScore: '',
-        });
-      }
+    if (!isOpen) return;
+    if (initialData) {
+      reset({
+        userId: initialData.userId,
+        email: initialData.email || '',
+        phone: initialData.phone || '',
+        role: initialData.role,
+        department: initialData.department,
+        position: initialData.position,
+        hireDate: initialData.hireDate?.split('T')[0] || '',
+      });
+    } else {
+      reset({
+        userId: '',
+        email: '',
+        phone: '',
+        role: 'HODIM' as UserRole,
+        department: '',
+        position: '',
+        hireDate: '',
+      });
     }
   }, [isOpen, initialData, reset]);
-
-  const handleFormSubmit = async (data: EmployeeFormData) => {
-    await onSubmit(data);
-  };
 
   const roleOptions = [
     { value: 'CEO', label: 'CEO' },
@@ -115,55 +89,61 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, isLoading
     { value: 'OPERATOR', label: 'Operator' },
   ];
 
-  const departmentOptions = [
-    { value: 'Dizayn', label: 'Dizayn' },
-    { value: 'Montaj', label: 'Montaj' },
-    { value: 'Shooting', label: 'Shooting' },
-    { value: 'Savdo', label: 'Savdo' },
-    { value: 'Boshqaruv', label: 'Boshqaruv' },
-    { value: 'Maliya', label: 'Maliya' },
-    { value: 'HR', label: 'HR' },
-  ];
+  const statusLabel: Record<EmployeeStatus, string> = {
+    ACTIVE: 'Faol',
+    ON_LEAVE: 'Dam olishda',
+    TERMINATED: "Ishdan bo'shatilgan",
+    PROBATION: 'Sinov muddatida',
+  };
 
-  const statusOptions = [
-    { value: 'ACTIVE', label: 'Faol' },
-    { value: 'ON_LEAVE', label: 'Dam olishda' },
-    { value: 'TERMINATED', label: 'Ishdan bo\'shatilgan' },
-    { value: 'PROBATION', label: 'Sinov muddatida' },
-  ];
+  const memberOptions = availableMembers.map((m) => ({
+    value: String(m.id),
+    label: [m.firstName, m.lastName].filter(Boolean).join(' ') + (m.username ? ` (@${m.username})` : ''),
+  }));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Xodimni tahrirlash' : 'Yangi xodim qo\'shish'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Xodimni tahrirlash' : "Yangi xodim qo'shish"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 px-6 pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              {...register('fullName')}
-              label="To'liq ism"
-              placeholder="Mas: Aziz Karimov"
-              error={errors.fullName?.message}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-6 pb-6">
+          {isEdit ? (
+            <div className="flex items-center gap-3 rounded-[10px] bg-[var(--color-bg-hover)] px-4 py-3">
+              <Avatar name={initialData!.fullName} src={initialData!.avatar} size="md" />
+              <div>
+                <p className="font-medium text-[var(--color-text-primary)]">{initialData!.fullName}</p>
+                <p className="text-caption text-[var(--color-text-muted)]">{statusLabel[initialData!.status]}</p>
+              </div>
+            </div>
+          ) : (
+            <Controller
+              control={control}
+              name="userId"
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  label="Ish maydoni a'zosi"
+                  placeholder={memberOptions.length ? "A'zoni tanlang" : "Barcha a'zolar allaqachon xodim sifatida qo'shilgan"}
+                  options={memberOptions}
+                  error={errors.userId?.message}
+                  disabled={memberOptions.length === 0}
+                />
+              )}
             />
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               {...register('email')}
               type="email"
-              label="Email"
+              label="Email (ixtiyoriy)"
               placeholder="Mas: aziz@retarget.uz"
               error={errors.email?.message}
             />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               {...register('phone')}
-              label="Telefon"
+              label="Telefon (ixtiyoriy)"
               placeholder="+998 XX XXX XX XX"
-            />
-            <Input
-              {...register('avatar')}
-              label="Avatar URL"
-              placeholder="https://example.com/avatar.jpg"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,12 +153,10 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, isLoading
               options={roleOptions}
               error={errors.role?.message}
             />
-            <Select
+            <Input
               {...register('department')}
               label="Bo'lim"
-              placeholder="Bo'limni tanlang"
-              options={departmentOptions}
-              error={errors.department?.message}
+              placeholder="Mas: SMM bo'limi"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -186,38 +164,19 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, isLoading
               {...register('position')}
               label="Lavozim"
               placeholder="Mas: Art Director"
-              error={errors.position?.message}
             />
-            <Select
-              {...register('status')}
-              label="Holati"
-              options={statusOptions}
-              error={errors.status?.message}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               {...register('hireDate')}
               type="date"
               label="Ishga qabul sanasi"
-              error={errors.hireDate?.message}
-            />
-            <Input
-              {...register('kpiScore', { valueAsNumber: true })}
-              type="number"
-              label="KPI ball (%)"
-              placeholder="Mas: 85"
-              min="0"
-              max="100"
-              error={errors.kpiScore?.message}
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>
               Bekor qilish
             </Button>
-            <Button type="submit" variant="primary" loading={isLoading}>
-              {isEdit ? 'Saqlash' : 'Qo\'shish'}
+            <Button type="submit" variant="primary" loading={isLoading} disabled={!isEdit && memberOptions.length === 0}>
+              {isEdit ? 'Saqlash' : "Qo'shish"}
             </Button>
           </DialogFooter>
         </form>
