@@ -4,9 +4,9 @@ services:
     container_name: crm-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-crm}
-      POSTGRES_USER: ${DB_USERNAME:-crm}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-crm}
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm}
     ports:
       - "5432:5432"
     volumes:
