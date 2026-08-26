@@ -14,6 +14,44 @@ import { useGroupTopics } from '@/features/groups/hooks/useGroups';
 
 export type TaskFormData = TaskInput;
 
+function FilePreviewCard({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const isImage = file.type.startsWith('image/');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isImage) return;
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file, isImage]);
+
+  if (isImage) {
+    return (
+      <div className="relative w-20 h-20 rounded-md overflow-hidden bg-[var(--color-bg-hover)] flex-shrink-0">
+        {previewUrl && <img src={previewUrl} alt={file.name} className="w-full h-full object-cover" />}
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="O'chirish"
+          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center"
+        >
+          <X className="w-3 h-3 text-white" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--color-bg-hover)]">
+      <Paperclip className="h-3.5 w-3.5 text-[var(--color-text-muted)] flex-shrink-0" />
+      <span className="text-caption text-[var(--color-text-secondary)] truncate max-w-[160px]">{file.name}</span>
+      <button type="button" onClick={onRemove} aria-label="O'chirish">
+        <X className="w-4 h-4 text-[var(--color-text-muted)] hover:text-[var(--color-error)]" />
+      </button>
+    </div>
+  );
+}
+
 interface TaskFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -300,20 +338,16 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
 
           <div>
             <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Fayllar / rasmlar</label>
-            <div className="space-y-1.5">
-              {(form.files ?? []).map((file, index) => (
-                <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--color-bg-hover)]">
-                  <Paperclip className="h-3.5 w-3.5 text-[var(--color-text-muted)] flex-shrink-0" />
-                  <span className="flex-1 text-caption text-[var(--color-text-secondary)] truncate">{file.name}</span>
-                  <button type="button" onClick={() => removeFile(index)} aria-label="O'chirish">
-                    <X className="w-4 h-4 text-[var(--color-text-muted)] hover:text-[var(--color-error)]" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <label className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-[var(--color-bg-border)] text-caption text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent)]">
+            {(form.files ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(form.files ?? []).map((file, index) => (
+                  <FilePreviewCard key={`${file.name}-${file.lastModified}-${index}`} file={file} onRemove={() => removeFile(index)} />
+                ))}
+              </div>
+            )}
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-[var(--color-bg-border)] text-caption text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent)]">
               <Paperclip className="h-4 w-4" /> Fayl biriktirish
-              <input type="file" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
+              <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={(e) => addFiles(e.target.files)} />
             </label>
           </div>
 
