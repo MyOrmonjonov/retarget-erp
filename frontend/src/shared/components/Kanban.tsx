@@ -18,8 +18,6 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
-import { MoreHorizontal } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
 import { Task, TaskStatus, KanbanColumn } from '@/shared/types';
 import { formatShortDate } from '@/shared/lib/utils';
 
@@ -27,10 +25,11 @@ interface KanbanColumnProps {
   column: KanbanColumn;
   tasks: Task[];
   onTaskMove: (taskId: string, newStatus: TaskStatus) => void;
+  onTaskClick?: (task: Task) => void;
   isLoading?: boolean;
 }
 
-function KanbanColumnComponent({ column, tasks, onTaskMove, isLoading }: KanbanColumnProps) {
+function KanbanColumnComponent({ column, tasks, onTaskMove, onTaskClick, isLoading }: KanbanColumnProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -84,7 +83,7 @@ function KanbanColumnComponent({ column, tasks, onTaskMove, isLoading }: KanbanC
             aria-label={`${column.title} vazifalari`}
           >
             {tasks.map((task) => (
-              <KanbanTaskCard key={task.id} task={task} />
+              <KanbanTaskCard key={task.id} task={task} onClick={onTaskClick ? () => onTaskClick(task) : undefined} />
             ))}
 
             {/* Empty State / Drop Zone */}
@@ -113,11 +112,11 @@ function KanbanColumnComponent({ column, tasks, onTaskMove, isLoading }: KanbanC
 
 interface KanbanTaskCardProps {
   task: Task;
+  onClick?: () => void;
 }
 
-function KanbanTaskCard({ task }: KanbanTaskCardProps) {
+function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
   const category = task.tags?.[0];
-  const extraCount = (String(task.id).split('').reduce((sum: number, ch: string) => sum + ch.charCodeAt(0), 0) % 4) + 1;
   const hasProgress = !!task.estimatedHours && task.loggedHours !== undefined;
   const progressPct = hasProgress
     ? Math.min(100, Math.round(((task.loggedHours ?? 0) / (task.estimatedHours ?? 1)) * 100))
@@ -129,10 +128,12 @@ function KanbanTaskCard({ task }: KanbanTaskCardProps) {
         className={cn(
           'group relative bg-[var(--color-bg-surface)] border border-[var(--color-bg-border)] rounded-lg p-3 transition-all duration-200',
           'hover:shadow-lg hover:border-[var(--color-text-muted)]',
+          onClick && 'cursor-pointer',
           'active:cursor-grabbing'
         )}
         role="listitem"
         aria-label={task.title}
+        onClick={onClick}
       >
         {/* Category badge */}
         {category && (
@@ -161,15 +162,7 @@ function KanbanTaskCard({ task }: KanbanTaskCardProps) {
           </span>
           {task.dueDate && <span>{formatShortDate(task.dueDate)}</span>}
         </div>
-
-        {/* Actions Menu */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
-      <p className="mt-1.5 px-1 text-caption text-[var(--color-text-muted)]">+{extraCount} boshqa</p>
     </div>
   );
 }
@@ -178,11 +171,12 @@ interface KanbanBoardProps {
   columns: KanbanColumn[];
   tasks: Task[];
   onTaskMove: (taskId: string, newStatus: TaskStatus) => void;
+  onTaskClick?: (task: Task) => void;
   isLoading?: boolean;
   className?: string;
 }
 
-export function KanbanBoard({ columns, tasks, onTaskMove, isLoading, className }: KanbanBoardProps) {
+export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading, className }: KanbanBoardProps) {
   const tasksByColumn = React.useMemo(() => {
     const grouped: Record<string, Task[]> = {};
     columns.forEach((col) => {
@@ -203,6 +197,7 @@ export function KanbanBoard({ columns, tasks, onTaskMove, isLoading, className }
           column={column}
           tasks={tasksByColumn[column.id] || []}
           onTaskMove={onTaskMove}
+          onTaskClick={onTaskClick}
           isLoading={isLoading}
         />
       ))}
@@ -210,18 +205,20 @@ export function KanbanBoard({ columns, tasks, onTaskMove, isLoading, className }
   );
 }
 
-// Default column configurations for Design Dept
+// Default column configurations for Design Dept - status values match the backend's real
+// task statuses 1:1 (via shared/types' TaskStatus mapping) so real tasks land in a column;
+// there's no backend concept of a separate "approved" sub-stage before IN_PROGRESS.
 export const DESIGN_DEPT_COLUMNS: KanbanColumn[] = [
-  { id: 'new-tz', title: 'Yangi TZ', status: 'BACKLOG', color: '#9A9A9A' },
+  { id: 'new-tz', title: 'Yangi TZ', status: 'TODO', color: '#9A9A9A' },
   { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#C6FF3D' },
   { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
-  { id: 'approved', title: 'Tasdiqlandi', status: 'TODO', color: '#34C759' },
+  { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#FF3B30' },
   { id: 'done', title: 'Yakunlandi', status: 'DONE', color: '#007AFF' },
 ];
 
 // Default column configurations for Editing Dept
 export const EDITING_DEPT_COLUMNS: KanbanColumn[] = [
-  { id: 'pending', title: 'Kutilmoqda', status: 'BACKLOG', color: '#9A9A9A' },
+  { id: 'pending', title: 'Kutilmoqda', status: 'TODO', color: '#9A9A9A' },
   { id: 'editing', title: 'Montajda', status: 'IN_PROGRESS', color: '#C6FF3D' },
   { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
   { id: 'rework', title: 'Qayta ishlash', status: 'BLOCKED', color: '#FF3B30' },
