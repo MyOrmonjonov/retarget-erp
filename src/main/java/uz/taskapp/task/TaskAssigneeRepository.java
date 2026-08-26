@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface TaskAssigneeRepository extends JpaRepository<TaskAssigneeEntity, TaskAssigneeId> {
     List<TaskAssigneeEntity> findAllByIdTaskIdIn(Collection<Long> taskIds);
+    List<TaskAssigneeEntity> findAllByIdUserId(Long userId);
     boolean existsByIdTaskIdAndIdUserId(Long taskId, Long userId);
     boolean existsByIdTaskId(Long taskId);
     void deleteAllByIdTaskId(Long taskId);
