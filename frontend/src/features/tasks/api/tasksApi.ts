@@ -48,6 +48,8 @@ interface TaskDto {
   reminderMinutes: number | null;
   groupId: number | null;
   topicId: number | null;
+  format: string | null;
+  platform: string | null;
 }
 
 // Backend has no analog for frontend priority MEDIUM/backend NORMAL naming, but the two
@@ -112,6 +114,9 @@ export interface TaskDetail extends TaskListItem {
   reminderMinutes?: number;
   groupId?: string;
   topicId?: string;
+  /** Dizayn bo'limi only - platform (Instagram/Telegram/...) the design is for. Format is
+   * folded into `tags[0]` instead, reusing the Kanban card's existing category-badge slot. */
+  platform?: string;
 }
 
 function toTaskListItem(dto: TaskDto): TaskListItem {
@@ -136,7 +141,7 @@ function toTaskListItem(dto: TaskDto): TaskListItem {
     projectId: '',
     projectName: '',
     dueDate: dto.dueAt ?? dto.createdAt,
-    tags: [],
+    tags: dto.format ? [dto.format] : [],
     checklistSummary: dto.checklist,
     fileCount: dto.files,
     createdAt: dto.createdAt,
@@ -158,6 +163,7 @@ function toTaskDetail(dto: TaskDto): TaskDetail {
     reminderMinutes: dto.reminderMinutes ?? undefined,
     groupId: dto.groupId != null ? String(dto.groupId) : undefined,
     topicId: dto.topicId != null ? String(dto.topicId) : undefined,
+    platform: dto.platform ?? undefined,
   };
 }
 
@@ -188,6 +194,9 @@ export interface TaskInput {
    * (optionally a topic/thread within it) - matching the task creator's own visibility. */
   groupId?: string;
   topicId?: string;
+  /** Dizayn bo'limi only. */
+  format?: string;
+  platform?: string;
 }
 
 function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) {
@@ -205,6 +214,8 @@ function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) 
       ? data.checklist.map((item) => ({ text: item.text, done: item.done }))
       : undefined,
     reminderMinutes: data.reminderMinutes,
+    format: data.format || undefined,
+    platform: data.platform || undefined,
     ...extra,
   };
 }

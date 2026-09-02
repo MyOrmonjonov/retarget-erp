@@ -149,6 +149,7 @@ public class TaskService {
                 request.priority() == null ? TaskPriority.NORMAL : request.priority(),
                 visibility,
                 request.dueAt());
+        newTask.updateDesignMeta(request.format(), request.platform());
         newTask.assignSequence(nextTaskSequence(request.workspaceId()));
         final TaskEntity task = taskRepository.save(newTask);
         assigneeRepository.saveAll(assigneeIds.stream()
@@ -285,6 +286,7 @@ public class TaskService {
         String previousTitle = task.getTitle();
         task.updateDetails(request.title(), request.description(), request.status(), request.priority(), request.dueAt(),
                 Boolean.TRUE.equals(request.dueAtProvided()));
+        task.updateDesignMeta(request.format(), request.platform());
 
         if (request.visibility() != null) {
             Long requestedGroupId = request.visibility() == TaskVisibility.GROUP ? request.groupId() : null;
@@ -641,7 +643,7 @@ public class TaskService {
                 includeDetails ? assigneeDetails(assignees) : List.of(),
                 includeDetails ? checklistItems(task.getId()) : List.of(),
                 includeDetails ? attachmentDetails(task.getId()) : List.of(), reminderMinutes, task.getDeletedAt(),
-                task.getSequenceNumber());
+                task.getSequenceNumber(), task.getFormat(), task.getPlatform());
     }
 
     private List<TaskPersonResponse> assigneeDetails(List<Long> userIds) {
@@ -1033,7 +1035,7 @@ public class TaskService {
                                String author, String groupName, String topicName, List<TaskPersonResponse> assignees,
                                List<TaskChecklistItemResponse> checklistItems,
                                List<TaskAttachmentResponse> attachments, Integer reminderMinutes,
-                               Instant archivedAt, Long sequenceNumber) {
+                               Instant archivedAt, Long sequenceNumber, String format, String platform) {
         public String code() {
             return "TASK-" + String.format("%04d", sequenceNumber);
         }

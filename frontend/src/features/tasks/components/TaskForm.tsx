@@ -60,7 +60,30 @@ interface TaskFormProps {
   isLoading?: boolean;
   assignees?: SelectOption[];
   groups?: Group[];
+  /** Dizayn bo'limi only - shows format/platform fields, ported from the reference CRM's
+   * Design page (its task model has these; ours doesn't for tasks in general). */
+  showDesignFields?: boolean;
 }
+
+const DESIGN_FORMAT_OPTIONS: SelectOption[] = [
+  { value: '', label: "Tanlanmagan" },
+  { value: 'Banner', label: 'Banner' },
+  { value: 'Post', label: 'Post' },
+  { value: 'Reels', label: 'Reels' },
+  { value: 'Story', label: 'Story' },
+  { value: 'Logo', label: 'Logo' },
+  { value: 'Prezentatsiya', label: 'Prezentatsiya' },
+  { value: 'Boshqa', label: 'Boshqa' },
+];
+
+const DESIGN_PLATFORM_OPTIONS: SelectOption[] = [
+  { value: '', label: "Tanlanmagan" },
+  { value: 'Instagram', label: 'Instagram' },
+  { value: 'Telegram', label: 'Telegram' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'TikTok', label: 'TikTok' },
+  { value: 'Boshqa', label: 'Boshqa' },
+];
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: 'LOW', label: 'Past' },
@@ -97,10 +120,13 @@ function emptyForm(): TaskFormData {
     files: [],
     groupId: undefined,
     topicId: undefined,
+    format: '',
+    platform: '',
   };
 }
 
-export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, assignees = [], groups = [] }: TaskFormProps) {
+export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, assignees = [], groups = [],
+                          showDesignFields = false }: TaskFormProps) {
   const isEdit = !!initialData;
   const [form, setForm] = useState<TaskFormData>(emptyForm());
   const [checklistDraft, setChecklistDraft] = useState('');
@@ -126,6 +152,8 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
         files: [],
         groupId: initialData.groupId,
         topicId: initialData.topicId,
+        format: initialData.tags?.[0] ?? '',
+        platform: initialData.platform ?? '',
       });
     } else {
       setForm(emptyForm());
@@ -304,6 +332,23 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
               options={STATUS_OPTIONS}
             />
           </div>
+
+          {showDesignFields && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                value={form.format ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, format: e.target.value }))}
+                label="Format"
+                options={DESIGN_FORMAT_OPTIONS}
+              />
+              <Select
+                value={form.platform ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value }))}
+                label="Platforma"
+                options={DESIGN_PLATFORM_OPTIONS}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input

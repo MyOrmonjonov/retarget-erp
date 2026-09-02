@@ -1,0 +1,3 @@
+ALTER TABLE tasks
+    ADD COLUMN format VARCHAR(64),
+    ADD COLUMN platform VARCHAR(64);

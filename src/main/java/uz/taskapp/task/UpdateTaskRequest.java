@@ -22,6 +22,8 @@ public record UpdateTaskRequest(
         Boolean dueAtProvided,
         Integer reminderMinutes,
         Boolean reminderProvided,
-        @Valid List<CreateChecklistItemRequest> checklist
+        @Valid List<CreateChecklistItemRequest> checklist,
+        String format,
+        String platform
 ) {
 }

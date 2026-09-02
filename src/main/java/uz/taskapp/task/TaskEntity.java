@@ -66,6 +66,14 @@ public class TaskEntity {
     @Column(name = "telegram_message_id")
     private Long telegramMessageId;
 
+    /** Optional design-task metadata (Dizayn bo'limi only in the UI) - ported from the reference
+     *  CRM's Design page. Not part of the constructor since every other caller has no use for it. */
+    @Column
+    private String format;
+
+    @Column
+    private String platform;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -99,6 +107,12 @@ public class TaskEntity {
     public void changeStatus(TaskStatus status) {
         this.status = status;
         this.completedAt = status == TaskStatus.COMPLETED ? Instant.now() : null;
+        this.updatedAt = Instant.now();
+    }
+
+    public void updateDesignMeta(String format, String platform) {
+        this.format = format == null || format.isBlank() ? null : format.trim();
+        this.platform = platform == null || platform.isBlank() ? null : platform.trim();
         this.updatedAt = Instant.now();
     }
 
@@ -158,6 +172,8 @@ public class TaskEntity {
     public Instant getDeletedAt() { return deletedAt; }
     public Long getDeletedBy() { return deletedBy; }
     public Long getTelegramMessageId() { return telegramMessageId; }
+    public String getFormat() { return format; }
+    public String getPlatform() { return platform; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
