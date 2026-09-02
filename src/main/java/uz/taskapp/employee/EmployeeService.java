@@ -17,6 +17,7 @@ import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -86,6 +87,14 @@ public class EmployeeService {
         requireMembership(workspaceId, currentUserId);
         EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
         profile.changeStatus(status);
+        return toResponse(workspaceId, profile);
+    }
+
+    @Transactional
+    public EmployeeResponse updateSalary(Long currentUserId, Long workspaceId, Long employeeId, BigDecimal baseSalary) {
+        requireMembership(workspaceId, currentUserId);
+        EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
+        profile.updateSalary(baseSalary);
         return toResponse(workspaceId, profile);
     }
 

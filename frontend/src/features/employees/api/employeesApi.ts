@@ -102,6 +102,10 @@ export const employeesApi = {
     return toEmployee(response.data);
   },
 
+  updateSalary: async (id: string, baseSalary: number): Promise<void> => {
+    await api.patch(`/employees/${id}/salary`, { baseSalary });
+  },
+
   delete: async (id: string): Promise<void> => {
     await api.delete(`/employees/${id}`);
   },

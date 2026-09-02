@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -47,6 +48,12 @@ public class EmployeeProfileEntity {
 
     @Column
     private String phone;
+
+    /** Monthly base salary before the KPI multiplier - see FinanceDashboardService.
+     *  Visible/editable only to finance-privileged roles at the frontend (no server-side
+     *  role check yet, consistent with the rest of this module). */
+    @Column(name = "base_salary", nullable = false)
+    private BigDecimal baseSalary = BigDecimal.ZERO;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -88,6 +95,11 @@ public class EmployeeProfileEntity {
         this.updatedAt = Instant.now();
     }
 
+    public void updateSalary(BigDecimal baseSalary) {
+        this.baseSalary = baseSalary == null ? BigDecimal.ZERO : baseSalary;
+        this.updatedAt = Instant.now();
+    }
+
     public Long getId() { return id; }
     public Long getWorkspaceId() { return workspaceId; }
     public Long getUserId() { return userId; }
@@ -98,6 +110,7 @@ public class EmployeeProfileEntity {
     public LocalDate getHireDate() { return hireDate; }
     public String getEmail() { return email; }
     public String getPhone() { return phone; }
+    public BigDecimal getBaseSalary() { return baseSalary; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

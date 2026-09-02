@@ -105,6 +105,44 @@ function toExpense(dto: ExpenseDto): Expense {
   };
 }
 
+export interface FinanceDashboard {
+  month: string;
+  totalRevenue: number;
+  totalSalaryExpense: number;
+  netProfit: number;
+  investorShare: number;
+  ceoShare: number;
+  projects: {
+    id: number;
+    name: string;
+    client: string;
+    revenue: number;
+    managerName?: string;
+    managerAvatar?: string;
+  }[];
+  employees: {
+    employeeId: number;
+    name: string;
+    avatar?: string;
+    kpi: number;
+    baseSalary: number;
+    calculatedSalary: number;
+    assignedTasks: number;
+    completedTasks: number;
+  }[];
+}
+
+interface FinanceDashboardDto {
+  month: string;
+  totalRevenue: number;
+  totalSalaryExpense: number;
+  netProfit: number;
+  investorShare: number;
+  ceoShare: number;
+  projects: { id: number; name: string; client: string; revenue: number; managerName: string | null; managerAvatar: string | null }[];
+  employees: { employeeId: number; name: string; avatar: string | null; kpi: number; baseSalary: number; calculatedSalary: number; assignedTasks: number; completedTasks: number }[];
+}
+
 export const financeApi = {
   listInvoices: async (): Promise<Invoice[]> => {
     const response = await api.get<InvoiceDto[]>('/invoices');
@@ -117,5 +155,20 @@ export const financeApi = {
   listExpenses: async (): Promise<Expense[]> => {
     const response = await api.get<ExpenseDto[]>('/expenses');
     return response.data.map(toExpense);
+  },
+
+  /** Internal profit/salary view - distinct from invoices/expenses above, which are client billing. */
+  getDashboard: async (month?: string): Promise<FinanceDashboard> => {
+    const response = await api.get<FinanceDashboardDto>('/finance/dashboard', month ? { month } : undefined);
+    const dto = response.data;
+    return {
+      ...dto,
+      projects: dto.projects.map((p) => ({
+        ...p,
+        managerName: p.managerName ?? undefined,
+        managerAvatar: p.managerAvatar ?? undefined,
+      })),
+      employees: dto.employees.map((e) => ({ ...e, avatar: e.avatar ?? undefined })),
+    };
   },
 };

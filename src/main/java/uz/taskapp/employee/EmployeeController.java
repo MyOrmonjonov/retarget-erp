@@ -3,6 +3,7 @@ package uz.taskapp.employee;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -59,6 +60,12 @@ public class EmployeeController {
         return employeeService.changeStatus(userId(request), workspaceId, employeeId, body.status());
     }
 
+    @PatchMapping("/{employeeId}/salary")
+    EmployeeResponse updateSalary(HttpServletRequest request, @RequestParam Long workspaceId,
+                                   @PathVariable Long employeeId, @Valid @RequestBody UpdateSalaryRequest body) {
+        return employeeService.updateSalary(userId(request), workspaceId, employeeId, body.baseSalary());
+    }
+
     @DeleteMapping("/{employeeId}")
     ResponseEntity<Void> delete(HttpServletRequest request, @RequestParam Long workspaceId, @PathVariable Long employeeId) {
         employeeService.delete(userId(request), workspaceId, employeeId);
@@ -70,4 +77,6 @@ public class EmployeeController {
     }
 
     public record ChangeStatusRequest(@NotNull EmployeeStatus status) {}
+
+    public record UpdateSalaryRequest(@NotNull @PositiveOrZero java.math.BigDecimal baseSalary) {}
 }

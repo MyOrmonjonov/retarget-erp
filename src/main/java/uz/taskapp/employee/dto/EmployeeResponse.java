@@ -4,6 +4,7 @@ import uz.taskapp.employee.EmployeeProfileEntity;
 import uz.taskapp.employee.EmployeeStatus;
 import uz.taskapp.employee.OrgRole;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -25,6 +26,7 @@ public record EmployeeResponse(
         long taskCount,
         long completedTasks,
         long overdueTasks,
+        BigDecimal baseSalary,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -49,6 +51,7 @@ public record EmployeeResponse(
                 taskCount,
                 completedTasks,
                 overdueTasks,
+                profile.getBaseSalary(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt()
         );
