@@ -1,79 +1,120 @@
 'use client';
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { useMemo, useState, useCallback } from 'react';
+import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { Button } from '@/shared/ui/button';
-import { Badge } from '@/shared/ui/badge';
-import { Progress } from '@/shared/ui/progress';
 import { Plus } from 'lucide-react';
-
-interface AdTask {
-  id: string;
-  title: string;
-  project: string;
-  dueDate: string;
-  progress: number;
-}
-
-const TODAY = new Date(2026, 7, 25);
-
-const initialTasks: AdTask[] = [
-  { id: '1', title: 'Coffee Lab — Instagram Ads sozlash', project: 'Instagram Rebrand', dueDate: '2026-08-25', progress: 90 },
-  { id: '2', title: 'UrbanFit — Facebook pixel integratsiya', project: 'Winter Campaign', dueDate: '2026-08-22', progress: 40 },
-  { id: '3', title: 'NovaTech — YouTube preroll sozlash', project: 'Product Launch', dueDate: '2026-08-30', progress: 100 },
-  { id: '4', title: 'MegaGroup — Retargeting auditoriya', project: 'Corporate Rebrand', dueDate: '2026-08-18', progress: 15 },
-  { id: '5', title: 'Trendy Wear — TikTok Ads test', project: 'Spring Collection', dueDate: '2026-09-02', progress: 60 },
-  { id: '6', title: 'Coffee Lab — Budjet optimallashtirish', project: 'Instagram Rebrand', dueDate: '2026-09-05', progress: 25 },
-];
-
-function formatDueDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short' }).replace('.', '');
-}
-
-function progressVariant(pct: number): 'success' | 'accent' | 'warning' {
-  if (pct >= 80) return 'success';
-  if (pct >= 40) return 'accent';
-  return 'warning';
-}
+import { toast } from 'sonner';
+import type { Task, TaskStatus } from '@/shared/types';
+import { TaskForm, type TaskFormData } from '@/features/tasks/components/TaskForm';
+import { tasksApi, type TaskDetail } from '@/features/tasks/api/tasksApi';
+import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus } from '@/features/tasks/hooks/useTasks';
+import { useEmployees } from '@/features/employees/hooks/useEmployees';
+import { useGroups } from '@/features/groups/hooks/useGroups';
 
 export function TargetPage() {
-  const [tasks] = useState<AdTask[]>(initialTasks);
+  const { data: tasks = [], isLoading: tasksLoading } = useTasks();
+  const { data: employees = [], isLoading: employeesLoading } = useEmployees();
+  const { data: groups = [] } = useGroups();
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const changeStatus = useChangeTaskStatus();
+
+  const isLoading = tasksLoading || employeesLoading;
+
+  const assigneeOptions = useMemo(
+    () => employees.map((e) => ({ value: e.userId, label: e.fullName })),
+    [employees]
+  );
+
+  // The task list endpoint never includes assignee names/avatars (only ids) - resolve them
+  // from the already-fetched employee list here, same as TasksPage/useDeptTasks do.
+  const displayTasks = useMemo(() => {
+    const byUserId = new Map(employees.map((e) => [e.userId, e]));
+    return tasks.map((t) => {
+      if (t.assigneeName || !t.assigneeId) return t;
+      const employee = byUserId.get(t.assigneeId);
+      return employee ? { ...t, assigneeName: employee.fullName, assigneeAvatar: employee.avatar } : t;
+    });
+  }, [tasks, employees]);
+
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
+  const [isFormLoading, setIsFormLoading] = useState(false);
+
+  const handleMove = useCallback((taskId: string, newStatus: TaskStatus) => {
+    changeStatus.mutate({ id: taskId, status: newStatus });
+  }, [changeStatus]);
+
+  const handleOpenCreateForm = useCallback(() => {
+    setEditingTask(null);
+    setIsFormOpen(true);
+  }, []);
+
+  const handleOpenEditForm = useCallback(async (task: Task) => {
+    setIsFormLoading(true);
+    setIsFormOpen(true);
+    try {
+      setEditingTask(await tasksApi.detail(String(task.id)));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Vazifa ma'lumotini olishda xatolik yuz berdi");
+      setIsFormOpen(false);
+    } finally {
+      setIsFormLoading(false);
+    }
+  }, []);
+
+  const handleCloseForm = useCallback(() => {
+    setIsFormOpen(false);
+    setEditingTask(null);
+  }, []);
+
+  const handleFormSubmit = useCallback(async (data: TaskFormData) => {
+    if (editingTask) {
+      await updateTask.mutateAsync({ id: editingTask.id, data });
+    } else {
+      await createTask.mutateAsync(data);
+    }
+    handleCloseForm();
+  }, [editingTask, updateTask, createTask, handleCloseForm]);
 
   return (
     <div className="space-y-6 animate-in">
-      <div className="flex items-center justify-end">
-        <Button variant="primary">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <p className="text-caption text-[var(--color-text-secondary)]">
+          Barcha vazifalar status bo'yicha
+        </p>
+        <Button variant="primary" onClick={handleOpenCreateForm}>
           <Plus className="h-4 w-4" />
           Yangi task
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Reklama tasklari</CardTitle>
-          <p className="mt-1 text-caption text-[var(--color-text-secondary)]">Muddat va bajarilish % bo'yicha</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {tasks.map((task) => {
-            const isOverdue = new Date(task.dueDate) < TODAY && task.progress < 100;
-            return (
-              <div key={task.id} className="flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-body font-medium text-[var(--color-text-primary)] truncate">{task.title}</p>
-                  <p className="text-caption text-[var(--color-text-muted)] truncate">{task.project}</p>
-                </div>
-                <Badge variant={isOverdue ? 'error' : 'default'} className="flex-shrink-0">
-                  {formatDueDate(task.dueDate)}
-                </Badge>
-                <div className="hidden sm:flex items-center gap-2 w-40 flex-shrink-0">
-                  <Progress value={task.progress} max={100} variant={progressVariant(task.progress)} size="sm" className="flex-1" />
-                  <span className="w-10 text-right text-caption text-[var(--color-text-secondary)]">{task.progress}%</span>
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-[420px] w-[300px] flex-shrink-0 rounded-[14px]" />
+          ))}
+        </div>
+      ) : (
+        <KanbanBoard
+          columns={TARGET_COLUMNS}
+          tasks={displayTasks}
+          onTaskMove={handleMove}
+          onTaskClick={handleOpenEditForm}
+        />
+      )}
+
+      <TaskForm
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        onSubmit={handleFormSubmit}
+        initialData={editingTask}
+        isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
+        assignees={assigneeOptions}
+        groups={groups}
+      />
     </div>
   );
 }

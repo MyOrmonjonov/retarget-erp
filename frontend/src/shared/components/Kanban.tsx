@@ -1,14 +1,15 @@
 'use client';
 
 import * as React from 'react';
+import type {
+  DragEndEvent} from '@dnd-kit/core';
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors,
-  DragEndEvent,
+  useSensors
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -18,7 +19,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
-import { Task, TaskStatus, KanbanColumn } from '@/shared/types';
+import type { Task, TaskStatus, KanbanColumn } from '@/shared/types';
 import { formatShortDate } from '@/shared/lib/utils';
 
 interface KanbanColumnProps {
@@ -222,5 +223,14 @@ export const EDITING_DEPT_COLUMNS: KanbanColumn[] = [
   { id: 'editing', title: 'Montajda', status: 'IN_PROGRESS', color: '#C6FF3D' },
   { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
   { id: 'rework', title: 'Qayta ishlash', status: 'BLOCKED', color: '#FF3B30' },
+  { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#34C759' },
+];
+
+// Default column configurations for the Target (all-tasks) board
+export const TARGET_COLUMNS: KanbanColumn[] = [
+  { id: 'new', title: 'Yangi', status: 'TODO', color: '#9A9A9A' },
+  { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#C6FF3D' },
+  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
+  { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#FF3B30' },
   { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#34C759' },
 ];
