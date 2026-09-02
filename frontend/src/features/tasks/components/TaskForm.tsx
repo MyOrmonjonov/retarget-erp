@@ -278,7 +278,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
                       onClick={() => toggleAssignee(option.value)}
                       className={`px-3 py-1.5 rounded-full text-caption transition-colors ${
                         active
-                          ? 'bg-[var(--color-accent)] text-black font-medium'
+                          ? 'bg-[var(--color-accent)] text-white font-medium'
                           : 'bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)]'
                       }`}
                     >

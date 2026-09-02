@@ -60,7 +60,7 @@ function GroupCard({ group }: { group: Group }) {
               onClick={() => updateRules.mutate({ groupId: group.id, policy })}
               className={`px-2.5 py-1 rounded-full text-caption transition-colors ${
                 group.taskCreationPolicy === policy
-                  ? 'bg-[var(--color-accent)] text-black font-medium'
+                  ? 'bg-[var(--color-accent)] text-white font-medium'
                   : 'bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]'
               }`}
             >
