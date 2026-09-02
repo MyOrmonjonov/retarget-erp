@@ -20,7 +20,6 @@ import { DesignDeptPage } from '@/features/design-dept/pages/DesignDeptPage';
 import { EditingDeptPage } from '@/features/editing-dept/pages/EditingDeptPage';
 import { ShootingPage } from '@/features/shooting/pages/ShootingPage';
 import { TargetPage } from '@/features/sales/pages/TargetPage';
-import { SalesPage } from '@/features/sales/pages/SalesPage';
 import { FinancePage } from '@/features/finance/pages/FinancePage';
 import { MappingPage } from '@/features/mapping/pages/MappingPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
@@ -138,14 +137,6 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth allowedRoles={['CEO', 'MENEJER', 'BOSHQARUVCHI']}>
                 <TargetPage />
-              </RequireAuth>
-            ),
-          },
-          {
-            path: '/sales',
-            element: (
-              <RequireAuth allowedRoles={['CEO', 'MENEJER', 'BOSHQARUVCHI']}>
-                <SalesPage />
               </RequireAuth>
             ),
           },

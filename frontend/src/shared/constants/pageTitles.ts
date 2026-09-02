@@ -12,7 +12,6 @@ export const PAGE_TITLES: Record<string, string> = {
   '/editing-dept': "Montaj bo'limi",
   '/shooting': 'Syomka kalendari',
   '/target': "Target bo'limi",
-  '/sales': "Sotuv bo'limi",
   '/finance': 'Moliyaviy Dashboard',
   '/mapping': 'Mapping (qadamlar)',
   '/settings': 'Sozlamalar',
