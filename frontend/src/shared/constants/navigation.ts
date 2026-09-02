@@ -1,4 +1,4 @@
-import { NavItem } from '@/shared/types';
+import type { NavItem, UserRole } from '@/shared/types';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -140,12 +140,12 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function filterNavByRole(items: NavItem[], role: string): NavItem[] {
+export function filterNavByRole(items: NavItem[], role: UserRole): NavItem[] {
   return items
     .map((section) => ({
       ...section,
       children: section.children?.filter((item) =>
-        !item.roles || item.roles.includes(role as any)
+        !item.roles || item.roles.includes(role)
       ),
     }))
     .filter((section) => section.children && section.children.length > 0);

@@ -1,7 +1,8 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { getAuthStore } from '@/features/auth/store/authStore';
 
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8080/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 class ApiClient {
   private client: AxiosInstance;

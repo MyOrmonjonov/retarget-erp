@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { AuthWorkspace, User, UserRole } from '@/shared/types';
+import type { AuthWorkspace, User, UserRole } from '@/shared/types';
 
 interface AuthState {
   // State

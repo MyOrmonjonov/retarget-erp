@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import type { Slot } from '@radix-ui/react-slot';
 import { cn } from '@/shared/lib/utils';
 
 type ButtonHTMLAttributes = React.ButtonHTMLAttributes<HTMLButtonElement>;

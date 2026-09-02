@@ -80,6 +80,10 @@ export function useSyncEmployeeRole() {
     return () => {
       cancelled = true;
     };
+    // `user`/`workspaces`/`updateUser` are deliberately excluded: this effect should only
+    // re-run when the person or the active workspace actually changes, not every time
+    // updateUser() (called inside) produces a new `user` object reference - that would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, activeWorkspaceId]);
 }
 
