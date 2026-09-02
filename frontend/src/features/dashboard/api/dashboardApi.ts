@@ -9,7 +9,15 @@ interface DashboardOverviewDto {
   totalEmployees: number;
   pendingApprovals: number;
   motivationScore: number;
-  teamLoad: { department: string; load: number; employeeCount: number }[];
+  teamLoad: {
+    employeeId: number;
+    name: string;
+    avatar: string | null;
+    load: number;
+    activeTasks: number;
+    overdueTasks: number;
+    projectCount: number;
+  }[];
   topEmployee: {
     id: number;
     name: string;
@@ -19,7 +27,15 @@ interface DashboardOverviewDto {
     completedTasks: number;
     projectCount: number;
   } | null;
-  projectStatus: { id: number; name: string; client: string; status: ProjectStatus; progress: number }[];
+  projectStatus: {
+    id: number;
+    name: string;
+    client: string;
+    status: ProjectStatus;
+    progress: number;
+    managerName: string | null;
+    managerAvatar: string | null;
+  }[];
 }
 
 let overviewPromise: Promise<DashboardOverviewDto> | null = null;
@@ -45,7 +61,15 @@ export const dashboardApi = {
       totalEmployees: data.totalEmployees,
       pendingApprovals: data.pendingApprovals,
       motivationScore: data.motivationScore,
-      teamLoad: data.teamLoad,
+      teamLoad: data.teamLoad.map((member) => ({
+        employeeId: member.employeeId,
+        name: member.name,
+        avatar: member.avatar ?? undefined,
+        load: member.load,
+        activeTasks: member.activeTasks,
+        overdueTasks: member.overdueTasks,
+        projectCount: member.projectCount,
+      })),
       topEmployee: data.topEmployee
         ? {
             id: String(data.topEmployee.id),
@@ -66,6 +90,8 @@ export const dashboardApi = {
       client: p.client,
       status: p.status,
       progress: p.progress,
+      managerName: p.managerName ?? undefined,
+      managerAvatar: p.managerAvatar ?? undefined,
     }));
   },
 
@@ -85,7 +111,15 @@ export const dashboardApi = {
 
   getTeamLoad: async () => {
     const data = await fetchOverview();
-    return data.teamLoad;
+    return data.teamLoad.map((member) => ({
+      employeeId: member.employeeId,
+      name: member.name,
+      avatar: member.avatar ?? undefined,
+      load: member.load,
+      activeTasks: member.activeTasks,
+      overdueTasks: member.overdueTasks,
+      projectCount: member.projectCount,
+    }));
   },
 
   getMotivationScore: async (): Promise<number> => {

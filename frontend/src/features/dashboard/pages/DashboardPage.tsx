@@ -103,7 +103,15 @@ export function DashboardPage() {
                         <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
                       </div>
                     </div>
-                    <Badge style={statusStyle[project.status]}>{PROJECT_STATUS_LABELS[project.status]}</Badge>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <Badge style={statusStyle[project.status]}>{PROJECT_STATUS_LABELS[project.status]}</Badge>
+                      {project.managerName && (
+                        <span className="flex items-center gap-1.5 text-caption text-[var(--color-text-secondary)]">
+                          <Avatar name={project.managerName} src={project.managerAvatar} size="xs" />
+                          {project.managerName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -163,6 +171,9 @@ export function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle className="!text-[16px] !font-bold">Jamoa yuklamasi</CardTitle>
+              <p className="mt-1 text-caption text-[var(--color-text-secondary)]">
+                Faol tasklar asosiy vazn bilan, kechikkan tasklar bosim sifatida, loyiha soni esa yengil ta'sir bilan hisoblanadi.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               {teamLoadLoading ? (
@@ -174,12 +185,15 @@ export function DashboardPage() {
                 ))
               ) : teamLoad && teamLoad.length > 0 ? (
                 teamLoad.map((member) => (
-                  <div key={member.department}>
+                  <div key={member.employeeId}>
                     <div className="flex items-center justify-between text-caption mb-1.5">
-                      <span className="text-[var(--color-text-primary)]">{member.department}</span>
+                      <span className="text-[var(--color-text-primary)] font-medium">{member.name}</span>
                       <span className="font-medium text-[var(--color-text-primary)]">{member.load}%</span>
                     </div>
-                    <Progress value={member.load} max={100} variant="accent" size="sm" />
+                    <Progress value={member.load} max={100} variant={member.load > 75 ? 'warning' : 'accent'} size="sm" />
+                    <p className="mt-1 text-caption text-[var(--color-text-muted)]">
+                      Faol: {member.activeTasks} &middot; Kechikkan: {member.overdueTasks} &middot; Loyihalar: {member.projectCount}
+                    </p>
                   </div>
                 ))
               ) : (

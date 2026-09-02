@@ -250,9 +250,13 @@ export interface DashboardStats {
   pendingApprovals: number;
   motivationScore: number; // 0-100
   teamLoad: {
-    department: string;
+    employeeId: number;
+    name: string;
+    avatar?: string;
     load: number; // 0-100
-    employeeCount: number;
+    activeTasks: number;
+    overdueTasks: number;
+    projectCount: number;
   }[];
   topEmployee: {
     id: string;
