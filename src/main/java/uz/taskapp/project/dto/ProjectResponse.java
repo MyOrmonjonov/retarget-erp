@@ -27,6 +27,11 @@ public record ProjectResponse(
         LocalDate startDate,
         BigDecimal budget,
         String description,
+        BigDecimal reportBudget,
+        Integer reportLeads,
+        BigDecimal reportCpl,
+        Integer reportSales,
+        BigDecimal reportRoi,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -50,6 +55,11 @@ public record ProjectResponse(
                 project.getStartDate(),
                 project.getBudget(),
                 project.getDescription(),
+                project.getReportBudget(),
+                project.getReportLeads(),
+                project.getReportCpl(),
+                project.getReportSales(),
+                project.getReportRoi(),
                 project.getCreatedAt(),
                 project.getUpdatedAt()
         );

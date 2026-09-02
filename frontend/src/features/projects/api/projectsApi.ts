@@ -21,6 +21,11 @@ interface ProjectDto {
   startDate: string | null;
   budget: number | null;
   description: string | null;
+  reportBudget: number | null;
+  reportLeads: number | null;
+  reportCpl: number | null;
+  reportSales: number | null;
+  reportRoi: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +48,11 @@ function toProject(dto: ProjectDto): Project {
     startDate: dto.startDate ?? undefined,
     budget: dto.budget ?? undefined,
     description: dto.description ?? undefined,
+    reportBudget: dto.reportBudget ?? undefined,
+    reportLeads: dto.reportLeads ?? undefined,
+    reportCpl: dto.reportCpl ?? undefined,
+    reportSales: dto.reportSales ?? undefined,
+    reportRoi: dto.reportRoi ?? undefined,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -100,5 +110,16 @@ export const projectsApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/projects/${id}`);
+  },
+
+  updateReport: async (id: string, report: {
+    reportBudget?: number;
+    reportLeads?: number;
+    reportCpl?: number;
+    reportSales?: number;
+    reportRoi?: number;
+  }): Promise<Project> => {
+    const response = await api.patch<ProjectDto>(`/projects/${id}/report`, report);
+    return toProject(response.data);
   },
 };

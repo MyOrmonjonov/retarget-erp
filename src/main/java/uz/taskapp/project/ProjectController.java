@@ -68,6 +68,13 @@ public class ProjectController {
         return projectService.updateProgress(userId(request), workspaceId, projectId, body.progress());
     }
 
+    @PatchMapping("/{projectId}/report")
+    ProjectResponse updateReport(HttpServletRequest request, @RequestParam Long workspaceId,
+                                  @PathVariable Long projectId, @RequestBody UpdateReportRequest body) {
+        return projectService.updateReport(userId(request), workspaceId, projectId,
+                body.reportBudget(), body.reportLeads(), body.reportCpl(), body.reportSales(), body.reportRoi());
+    }
+
     @DeleteMapping("/{projectId}")
     ResponseEntity<Void> delete(HttpServletRequest request, @RequestParam Long workspaceId, @PathVariable Long projectId) {
         projectService.delete(userId(request), workspaceId, projectId);
@@ -77,6 +84,10 @@ public class ProjectController {
     private Long userId(HttpServletRequest request) {
         return (Long) request.getAttribute(AuthInterceptor.USER_ID_ATTRIBUTE);
     }
+
+    public record UpdateReportRequest(java.math.BigDecimal reportBudget, Integer reportLeads,
+                                       java.math.BigDecimal reportCpl, Integer reportSales,
+                                       java.math.BigDecimal reportRoi) {}
 
     public record ChangeStatusRequest(@NotNull ProjectStatus status) {}
     public record UpdateProgressRequest(@NotNull @Min(0) @Max(100) Integer progress) {}

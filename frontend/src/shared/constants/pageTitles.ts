@@ -14,6 +14,7 @@ export const PAGE_TITLES: Record<string, string> = {
   '/target': "Target bo'limi",
   '/finance': 'Moliyaviy Dashboard',
   '/mapping': 'Mapping (qadamlar)',
+  '/reports': 'Hisobotlar',
   '/settings': 'Sozlamalar',
 };
 

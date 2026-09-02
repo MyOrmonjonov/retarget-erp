@@ -14,6 +14,7 @@ import {
   CreditCard,
   Map,
   MessagesSquare,
+  TrendingUp,
 } from 'lucide-react';
 
 export const NAV_ITEMS: NavItem[] = [
@@ -128,6 +129,12 @@ export const NAV_ITEMS: NavItem[] = [
         icon: Map,
         href: '/mapping',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
+      },
+      {
+        label: 'Hisobotlar',
+        icon: TrendingUp,
+        href: '/reports',
+        roles: ['CEO'],
       },
     ],
   },

@@ -149,6 +149,12 @@ export interface Project extends BaseEntity {
   startDate?: string;
   budget?: number;
   description?: string;
+  /** Manually-entered marketing performance numbers (Hisobotlar page) - distinct from `budget`. */
+  reportBudget?: number;
+  reportLeads?: number;
+  reportCpl?: number;
+  reportSales?: number;
+  reportRoi?: number;
 }
 
 /** Task */

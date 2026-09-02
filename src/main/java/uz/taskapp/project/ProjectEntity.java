@@ -61,6 +61,23 @@ public class ProjectEntity {
     @Column
     private String description;
 
+    /** Manually-entered marketing performance numbers (Hisobotlar page only) - distinct from
+     *  {@link #budget}, which is the client contract value used as revenue in Finance. */
+    @Column(name = "report_budget")
+    private BigDecimal reportBudget;
+
+    @Column(name = "report_leads")
+    private Integer reportLeads;
+
+    @Column(name = "report_cpl")
+    private BigDecimal reportCpl;
+
+    @Column(name = "report_sales")
+    private Integer reportSales;
+
+    @Column(name = "report_roi")
+    private BigDecimal reportRoi;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -115,6 +132,16 @@ public class ProjectEntity {
         this.updatedAt = Instant.now();
     }
 
+    public void updateReport(BigDecimal reportBudget, Integer reportLeads, BigDecimal reportCpl,
+                              Integer reportSales, BigDecimal reportRoi) {
+        this.reportBudget = reportBudget;
+        this.reportLeads = reportLeads;
+        this.reportCpl = reportCpl;
+        this.reportSales = reportSales;
+        this.reportRoi = reportRoi;
+        this.updatedAt = Instant.now();
+    }
+
     public Long getId() { return id; }
     public Long getWorkspaceId() { return workspaceId; }
     public String getName() { return name; }
@@ -129,6 +156,11 @@ public class ProjectEntity {
     public LocalDate getDeadline() { return deadline; }
     public BigDecimal getBudget() { return budget; }
     public String getDescription() { return description; }
+    public BigDecimal getReportBudget() { return reportBudget; }
+    public Integer getReportLeads() { return reportLeads; }
+    public BigDecimal getReportCpl() { return reportCpl; }
+    public Integer getReportSales() { return reportSales; }
+    public BigDecimal getReportRoi() { return reportRoi; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

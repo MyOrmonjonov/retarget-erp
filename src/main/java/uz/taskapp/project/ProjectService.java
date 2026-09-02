@@ -105,6 +105,17 @@ public class ProjectService {
     }
 
     @Transactional
+    public ProjectResponse updateReport(Long currentUserId, Long workspaceId, Long projectId,
+                                         java.math.BigDecimal reportBudget, Integer reportLeads,
+                                         java.math.BigDecimal reportCpl, Integer reportSales,
+                                         java.math.BigDecimal reportRoi) {
+        requireMembership(workspaceId, currentUserId);
+        ProjectEntity project = findWithinWorkspace(projectId, workspaceId);
+        project.updateReport(reportBudget, reportLeads, reportCpl, reportSales, reportRoi);
+        return detail(currentUserId, workspaceId, projectId);
+    }
+
+    @Transactional
     public void delete(Long currentUserId, Long workspaceId, Long projectId) {
         requireMembership(workspaceId, currentUserId);
         projectRepository.delete(findWithinWorkspace(projectId, workspaceId));

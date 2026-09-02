@@ -39,6 +39,21 @@ export function useUpdateProject() {
   });
 }
 
+export function useUpdateProjectReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, report }: { id: string; report: Parameters<typeof projectsApi.updateReport>[1] }) =>
+      projectsApi.updateReport(id, report),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Hisobot yangilandi');
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Hisobotni yangilashda xatolik yuz berdi');
+    },
+  });
+}
+
 export function useChangeProjectStatus() {
   const queryClient = useQueryClient();
   return useMutation({

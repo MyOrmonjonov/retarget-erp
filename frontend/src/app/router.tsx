@@ -22,6 +22,7 @@ import { ShootingPage } from '@/features/shooting/pages/ShootingPage';
 import { TargetPage } from '@/features/sales/pages/TargetPage';
 import { FinancePage } from '@/features/finance/pages/FinancePage';
 import { MappingPage } from '@/features/mapping/pages/MappingPage';
+import { ReportsPage } from '@/features/reports/pages/ReportsPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 
 const router = createBrowserRouter([
@@ -153,6 +154,14 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth allowedRoles={['CEO', 'MENEJER', 'BOSHQARUVCHI']}>
                 <MappingPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/reports',
+            element: (
+              <RequireAuth allowedRoles={['CEO']}>
+                <ReportsPage />
               </RequireAuth>
             ),
           },
