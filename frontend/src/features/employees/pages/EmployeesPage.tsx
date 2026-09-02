@@ -2,21 +2,80 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
+import { Input } from '@/shared/ui/input';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { EmployeeForm, type EmployeeFormData } from '../components/EmployeeForm';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 import { ROLE_BADGE_STYLE, ROLE_LABELS, type Employee } from '@/shared/types';
 import { useEmployees, useAvailableMembers, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from '../hooks/useEmployees';
+import { employeesApi } from '../api/employeesApi';
+import { useUser } from '@/features/auth/store/authStore';
 
 type EmployeeWithUserId = Employee & { userId: string };
 
+function workloadVariant(pct: number): 'success' | 'warning' | 'error' {
+  if (pct >= 75) return 'error';
+  if (pct >= 40) return 'warning';
+  return 'success';
+}
+
+/** Inline-editable number, used for CEO-only base salary / KPI-base cells. */
+function InlineNumberField({ value, onSave, suffix }: { value: number; onSave: (next: number) => void; suffix?: string }) {
+  const [draft, setDraft] = useState(String(value));
+  const commit = () => {
+    const parsed = Number(draft);
+    if (Number.isNaN(parsed) || parsed < 0 || parsed === value) {
+      setDraft(String(value));
+      return;
+    }
+    onSave(parsed);
+  };
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Input
+        type="number"
+        min={0}
+        value={draft}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        className="w-24 h-7 text-caption"
+      />
+      {suffix && <span className="text-caption text-[var(--color-text-muted)]">{suffix}</span>}
+    </span>
+  );
+}
+
 export function EmployeesPage() {
   const { data: employees = [], isLoading } = useEmployees();
+  const user = useUser();
+  const isCeo = user?.role === 'CEO';
+  const queryClient = useQueryClient();
+
+  const salaryMutation = useMutation({
+    mutationFn: ({ id, baseSalary }: { id: string; baseSalary: number }) => employeesApi.updateSalary(id, baseSalary),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Maosh yangilandi');
+    },
+    onError: (error: { message?: string }) => toast.error(error.message || 'Maoshni yangilashda xatolik yuz berdi'),
+  });
+
+  const kpiBaseMutation = useMutation({
+    mutationFn: ({ id, kpiBase }: { id: string; kpiBase: number }) => employeesApi.updateKpiBase(id, kpiBase),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('KPI bazasi yangilandi');
+    },
+    onError: (error: { message?: string }) => toast.error(error.message || 'KPI bazasini yangilashda xatolik yuz berdi'),
+  });
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -127,9 +186,14 @@ export function EmployeesPage() {
                   </p>
                 </div>
               </div>
-              <Badge style={ROLE_BADGE_STYLE[emp.role]} size="sm">
-                {ROLE_LABELS[emp.role]}
-              </Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge style={ROLE_BADGE_STYLE[emp.role]} size="sm">
+                  {ROLE_LABELS[emp.role]}
+                </Badge>
+                <Badge variant={workloadVariant(emp.workload)} size="sm">
+                  Yuklanish: {emp.workload}%
+                </Badge>
+              </div>
               <div className="flex items-center gap-5 mt-4">
                 <span className="text-caption text-[var(--color-text-secondary)]">
                   KPI: <span className="text-[var(--color-text-primary)] font-medium">{emp.kpiScore}%</span>
@@ -138,6 +202,26 @@ export function EmployeesPage() {
                   Loyihalar: <span className="text-[var(--color-text-primary)] font-medium">{emp.projectCount}</span>
                 </span>
               </div>
+              {isCeo && (
+                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--color-bg-border)]">
+                  <div>
+                    <p className="text-caption text-[var(--color-text-muted)] mb-1">Maosh</p>
+                    <InlineNumberField
+                      value={emp.baseSalary}
+                      onSave={(next) => salaryMutation.mutate({ id: String(emp.id), baseSalary: next })}
+                      suffix="so'm"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-caption text-[var(--color-text-muted)] mb-1">KPI bazasi</p>
+                    <InlineNumberField
+                      value={emp.kpiBase}
+                      onSave={(next) => kpiBaseMutation.mutate({ id: String(emp.id), kpiBase: next })}
+                      suffix="%"
+                    />
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </div>

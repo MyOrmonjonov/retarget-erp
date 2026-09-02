@@ -66,6 +66,12 @@ public class EmployeeController {
         return employeeService.updateSalary(userId(request), workspaceId, employeeId, body.baseSalary());
     }
 
+    @PatchMapping("/{employeeId}/kpi-base")
+    EmployeeResponse updateKpiBase(HttpServletRequest request, @RequestParam Long workspaceId,
+                                    @PathVariable Long employeeId, @Valid @RequestBody UpdateKpiBaseRequest body) {
+        return employeeService.updateKpiBase(userId(request), workspaceId, employeeId, body.kpiBase());
+    }
+
     @DeleteMapping("/{employeeId}")
     ResponseEntity<Void> delete(HttpServletRequest request, @RequestParam Long workspaceId, @PathVariable Long employeeId) {
         employeeService.delete(userId(request), workspaceId, employeeId);
@@ -79,4 +85,7 @@ public class EmployeeController {
     public record ChangeStatusRequest(@NotNull EmployeeStatus status) {}
 
     public record UpdateSalaryRequest(@NotNull @PositiveOrZero java.math.BigDecimal baseSalary) {}
+
+    public record UpdateKpiBaseRequest(@NotNull @jakarta.validation.constraints.Min(0)
+                                        @jakarta.validation.constraints.Max(100) Integer kpiBase) {}
 }

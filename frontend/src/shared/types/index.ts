@@ -219,8 +219,12 @@ export interface Employee extends BaseEntity {
   kpiScore: number; // 0-100
   projectCount: number;
   taskCount: number;
+  activeTasks: number;
   completedTasks: number;
   overdueTasks: number;
+  workload: number; // 0-100, ported from the reference CRM's Team page formula
+  baseSalary: number;
+  kpiBase: number; // 0-100 fallback KPI used by the Finance dashboard when nothing's assigned
 }
 
 /** Attendance */

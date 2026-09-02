@@ -88,7 +88,7 @@ public class FinanceDashboardService {
                     "WHERE a.user_id = ? AND t.workspace_id = ? AND t.deleted_at IS NULL AND t.status = 'COMPLETED' " +
                     "AND t.due_at IS NOT NULL AND t.due_at >= ? AND t.due_at < ?",
                     userId, workspaceId, rangeStart, rangeEnd);
-            int kpi = assignedTasks == 0 ? 100
+            int kpi = assignedTasks == 0 ? emp.getKpiBase()
                     : (int) Math.min(100, Math.round(completedTasks / (double) assignedTasks * 100));
             BigDecimal baseSalary = emp.getBaseSalary() == null ? BigDecimal.ZERO : emp.getBaseSalary();
             BigDecimal calculatedSalary = baseSalary

@@ -99,6 +99,14 @@ public class EmployeeService {
     }
 
     @Transactional
+    public EmployeeResponse updateKpiBase(Long currentUserId, Long workspaceId, Long employeeId, int kpiBase) {
+        requireMembership(workspaceId, currentUserId);
+        EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
+        profile.updateKpiBase(kpiBase);
+        return toResponse(workspaceId, profile);
+    }
+
+    @Transactional
     public void delete(Long currentUserId, Long workspaceId, Long employeeId) {
         requireMembership(workspaceId, currentUserId);
         employeeRepository.delete(findWithinWorkspace(employeeId, workspaceId));
@@ -123,13 +131,16 @@ public class EmployeeService {
                 .toList();
         long taskCount = tasks.size();
         long completedTasks = tasks.stream().filter(t -> t.getStatus() == TaskStatus.COMPLETED).count();
+        long activeTasks = tasks.stream()
+                .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getStatus() != TaskStatus.CANCELLED)
+                .count();
         Instant now = Instant.now();
         long overdueTasks = tasks.stream()
                 .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getStatus() != TaskStatus.CANCELLED)
                 .filter(t -> t.getDueAt() != null && t.getDueAt().isBefore(now))
                 .count();
 
-        return EmployeeResponse.from(profile, fullName, avatar, kpiScore, projectCount, taskCount,
+        return EmployeeResponse.from(profile, fullName, avatar, kpiScore, projectCount, taskCount, activeTasks,
                 completedTasks, overdueTasks);
     }
 

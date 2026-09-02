@@ -55,6 +55,11 @@ public class EmployeeProfileEntity {
     @Column(name = "base_salary", nullable = false)
     private BigDecimal baseSalary = BigDecimal.ZERO;
 
+    /** Fallback KPI (0-100) used by FinanceDashboardService when an employee has no tasks
+     *  assigned in the selected month, instead of a flat 100. Manually set, defaults to 80. */
+    @Column(name = "kpi_base", nullable = false)
+    private int kpiBase = 80;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -100,6 +105,11 @@ public class EmployeeProfileEntity {
         this.updatedAt = Instant.now();
     }
 
+    public void updateKpiBase(int kpiBase) {
+        this.kpiBase = Math.min(100, Math.max(0, kpiBase));
+        this.updatedAt = Instant.now();
+    }
+
     public Long getId() { return id; }
     public Long getWorkspaceId() { return workspaceId; }
     public Long getUserId() { return userId; }
@@ -111,6 +121,7 @@ public class EmployeeProfileEntity {
     public String getEmail() { return email; }
     public String getPhone() { return phone; }
     public BigDecimal getBaseSalary() { return baseSalary; }
+    public int getKpiBase() { return kpiBase; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

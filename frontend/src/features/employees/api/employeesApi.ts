@@ -17,8 +17,12 @@ interface EmployeeDto {
   kpiScore: number | null;
   projectCount: number;
   taskCount: number;
+  activeTasks: number;
   completedTasks: number;
   overdueTasks: number;
+  workload: number;
+  baseSalary: number;
+  kpiBase: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,8 +55,12 @@ function toEmployee(dto: EmployeeDto): Employee & { userId: string } {
     kpiScore: dto.kpiScore ?? 0,
     projectCount: dto.projectCount,
     taskCount: dto.taskCount,
+    activeTasks: dto.activeTasks,
     completedTasks: dto.completedTasks,
     overdueTasks: dto.overdueTasks,
+    workload: dto.workload,
+    baseSalary: dto.baseSalary,
+    kpiBase: dto.kpiBase,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -104,6 +112,10 @@ export const employeesApi = {
 
   updateSalary: async (id: string, baseSalary: number): Promise<void> => {
     await api.patch(`/employees/${id}/salary`, { baseSalary });
+  },
+
+  updateKpiBase: async (id: string, kpiBase: number): Promise<void> => {
+    await api.patch(`/employees/${id}/kpi-base`, { kpiBase });
   },
 
   delete: async (id: string): Promise<void> => {
