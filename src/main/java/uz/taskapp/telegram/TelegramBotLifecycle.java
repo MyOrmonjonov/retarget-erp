@@ -35,11 +35,15 @@ import uz.taskapp.task.TaskService;
 import uz.taskapp.common.ApiException;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class TelegramBotLifecycle {
     private static final Logger log = LoggerFactory.getLogger(TelegramBotLifecycle.class);
+    private static final int MAX_CONSECUTIVE_POLLING_FAILURES = 10;
+    private static final long MAX_POLLING_BACKOFF_MS = 60_000L;
 
+    private final AtomicInteger consecutivePollingFailures = new AtomicInteger(0);
     private final TelegramProperties properties;
     private final UserRepository userRepository;
     private final GroupService groupService;
@@ -69,8 +73,7 @@ public class TelegramBotLifecycle {
             return;
         }
         bot = new TelegramBot(properties.botToken());
-        bot.setUpdatesListener(this::handleUpdates, exception ->
-                log.error("Telegram polling xatosi", exception));
+        bot.setUpdatesListener(this::handleUpdates, this::handlePollingException);
         bot.execute(new SetMyCommands(
                 new BotCommand("start", "Ilova tugmasini qayta yuborish"),
                 new BotCommand("task", "Yangi vazifa: /task @kimga bugun 17:00 matn"),
@@ -83,6 +86,7 @@ public class TelegramBotLifecycle {
     }
 
     private int handleUpdates(List<Update> updates) {
+        consecutivePollingFailures.set(0);
         for (Update update : updates) {
             try {
                 handle(update);
@@ -91,6 +95,29 @@ public class TelegramBotLifecycle {
             }
         }
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
+    }
+
+    /**
+     * Without backoff, a getUpdates failure (e.g. an invalid/expired token) makes the pengrad
+     * library retry in a tight loop against Telegram's API, flooding the logs until the process
+     * runs out of memory. This backs off exponentially (capped) and, if the failures don't stop,
+     * gives up on polling entirely rather than taking the whole app down with it.
+     */
+    private void handlePollingException(Exception exception) {
+        int failures = consecutivePollingFailures.incrementAndGet();
+        if (failures >= MAX_CONSECUTIVE_POLLING_FAILURES) {
+            log.error("Telegram polling {} marta ketma-ket muvaffaqiyatsiz bo'ldi, bot to'xtatildi. " +
+                    "TELEGRAM_BOT_TOKEN'ni tekshirib, ilovani qayta ishga tushiring.", failures, exception);
+            bot.shutdown();
+            return;
+        }
+        log.error("Telegram polling xatosi ({}-ketma-ket urinish)", failures, exception);
+        long backoffMs = Math.min(1000L << Math.min(failures, 6), MAX_POLLING_BACKOFF_MS);
+        try {
+            Thread.sleep(backoffMs);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void handle(Update update) {
