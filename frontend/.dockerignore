@@ -1,0 +1,6 @@
+node_modules/
+dist/
+dist-telegram/
+.env
+.env.*
+!.env.example
