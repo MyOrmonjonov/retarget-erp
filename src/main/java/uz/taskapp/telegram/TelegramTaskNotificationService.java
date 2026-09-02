@@ -72,6 +72,37 @@ public class TelegramTaskNotificationService {
         Thread.startVirtualThread(() -> publish(message));
     }
 
+    /**
+     * DMs a newly-assigned person directly - the group-broadcast path in {@link #publish} only
+     * covers tasks placed in a linked Telegram group, so a workspace-only task's assignee
+     * otherwise gets no signal at all until they open the app themselves. Best-effort: silently
+     * no-ops if the person has never started a DM with the bot (Telegram just errors on send).
+     */
+    public void notifyAssigneeAsync(Assignee assignee, Long taskId, String title, Instant dueAt) {
+        if (bot == null || assignee.telegramId() == null) return;
+        Thread.startVirtualThread(() -> notifyAssignee(assignee.telegramId(), taskId, title, dueAt));
+    }
+
+    private void notifyAssignee(Long telegramId, Long taskId, String title, Instant dueAt) {
+        StringBuilder text = new StringBuilder("<b>📌 Sizga yangi vazifa biriktirildi</b>\n\n")
+                .append("<b>").append(escapeHtml(title)).append("</b>");
+        if (dueAt != null) {
+            text.append("\nMuddat: ").append(DEADLINE_FORMAT.format(dueAt));
+        }
+        SendMessage request = new SendMessage(telegramId, text.toString())
+                .parseMode(com.pengrad.telegrambot.model.request.ParseMode.HTML);
+        String miniAppUrl = properties.miniAppUrl();
+        if (miniAppUrl != null && !miniAppUrl.isBlank()) {
+            String separator = miniAppUrl.contains("?") ? "&" : "?";
+            request = request.replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton("📋 Vazifaga o'tish")
+                    .webApp(new com.pengrad.telegrambot.model.WebAppInfo(miniAppUrl + separator + "task=" + taskId))));
+        }
+        SendResponse response = bot.execute(request);
+        if (!response.isOk()) {
+            log.info("Vazifa {} uchun {} ga shaxsiy xabar yuborilmadi: {}", taskId, telegramId, response.description());
+        }
+    }
+
     public void syncAsync(TaskTelegramMessage message) {
         if (bot == null || message.chatId() == null) return;
         Thread.startVirtualThread(() -> sync(message));

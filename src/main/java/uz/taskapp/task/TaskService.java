@@ -165,6 +165,13 @@ public class TaskService {
                             displayName(currentUserId), assigneeMentions(assigneeIds), task.getDueAt(), task.getStatus(), null,
                             telegramAttachment(task.getId()), false);
             publishAfterCommit(notification);
+        } else {
+            // No group post to see it in - DM each assignee directly so a workspace-only task
+            // doesn't leave them with zero signal until they happen to open the app.
+            for (TelegramTaskNotificationService.Assignee assignee : assigneeMentions(assigneeIds)) {
+                runAfterCommit(() -> taskNotificationService.notifyAssigneeAsync(
+                        assignee, task.getId(), task.getTitle(), task.getDueAt()));
+            }
         }
         if (request.voiceDraftId() != null) {
             Long draftId = request.voiceDraftId();
