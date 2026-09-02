@@ -42,6 +42,10 @@ public class ProjectEntity {
     @Column(nullable = false)
     private int progress;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private ProjectPriority priority;
+
     @Column(name = "manager_id", nullable = false)
     private Long managerId;
 
@@ -67,8 +71,8 @@ public class ProjectEntity {
     }
 
     public ProjectEntity(Long workspaceId, String name, Long clientId, String clientName, String type,
-                          ProjectStatus status, int progress, Long managerId, LocalDate startDate,
-                          LocalDate deadline, BigDecimal budget, String description) {
+                          ProjectStatus status, int progress, ProjectPriority priority, Long managerId,
+                          LocalDate startDate, LocalDate deadline, BigDecimal budget, String description) {
         this.workspaceId = workspaceId;
         this.name = name;
         this.clientId = clientId;
@@ -76,6 +80,7 @@ public class ProjectEntity {
         this.type = type;
         this.status = status == null ? ProjectStatus.PLANNING : status;
         this.progress = progress;
+        this.priority = priority == null ? ProjectPriority.MEDIUM : priority;
         this.managerId = managerId;
         this.startDate = startDate;
         this.deadline = deadline;
@@ -85,12 +90,13 @@ public class ProjectEntity {
         this.updatedAt = this.createdAt;
     }
 
-    public void update(String name, Long clientId, String clientName, String type, Long managerId,
-                        LocalDate startDate, LocalDate deadline, BigDecimal budget, String description) {
+    public void update(String name, Long clientId, String clientName, String type, ProjectPriority priority,
+                        Long managerId, LocalDate startDate, LocalDate deadline, BigDecimal budget, String description) {
         this.name = name;
         this.clientId = clientId;
         this.clientName = clientName;
         this.type = type;
+        this.priority = priority == null ? ProjectPriority.MEDIUM : priority;
         this.managerId = managerId;
         this.startDate = startDate;
         this.deadline = deadline;
@@ -117,6 +123,7 @@ public class ProjectEntity {
     public String getType() { return type; }
     public ProjectStatus getStatus() { return status; }
     public int getProgress() { return progress; }
+    public ProjectPriority getPriority() { return priority; }
     public Long getManagerId() { return managerId; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getDeadline() { return deadline; }

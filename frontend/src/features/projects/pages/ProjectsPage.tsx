@@ -1,29 +1,120 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Card, CardContent } from '@/shared/ui/card';
+import { useMemo, useState, useCallback } from 'react';
+import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/table';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
+import { CircularProgress } from '@/shared/components/CircularProgress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
 import { Plus, Search } from 'lucide-react';
-import type { Project } from '@/shared/types';
-import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from '@/shared/types';
+import type { Project, ProjectStatus } from '@/shared/types';
+import { PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS } from '@/shared/types';
 import { ProjectForm, type ProjectFormData } from '../components/ProjectForm';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
-import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from '../hooks/useProjects';
+import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, useChangeProjectStatus } from '../hooks/useProjects';
+import { useEmployees } from '@/features/employees/hooks/useEmployees';
+import { formatShortDate } from '@/shared/lib/utils';
+
+const STATUS_OPTIONS: ProjectStatus[] = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
+
+const STATUS_SELECT_STYLE: Record<ProjectStatus, { backgroundColor: string; color: string }> = {
+  PLANNING: { backgroundColor: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)' },
+  ACTIVE: { backgroundColor: 'var(--color-success-muted)', color: 'var(--color-success)' },
+  ON_HOLD: { backgroundColor: 'var(--color-warning-muted)', color: 'var(--color-warning)' },
+  COMPLETED: { backgroundColor: 'var(--color-success-muted)', color: 'var(--color-success)' },
+  CANCELLED: { backgroundColor: 'var(--color-error-muted)', color: 'var(--color-error)' },
+};
+
+function InlineStatusSelect({ project, onChange }: { project: Project; onChange: (status: ProjectStatus) => void }) {
+  return (
+    <select
+      value={project.status}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value as ProjectStatus)}
+      className="text-caption font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+      style={STATUS_SELECT_STYLE[project.status]}
+    >
+      {STATUS_OPTIONS.map((status) => (
+        <option key={status} value={status}>{PROJECT_STATUS_LABELS[status]}</option>
+      ))}
+    </select>
+  );
+}
+
+function ProjectCard({ project, onOpen, onChangeStatus }: {
+  project: Project;
+  onOpen: () => void;
+  onChangeStatus: (status: ProjectStatus) => void;
+}) {
+  return (
+    <Card className="p-5 cursor-pointer hover:border-[var(--color-text-muted)] transition-colors" onClick={onOpen}>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <CircularProgress value={project.progress} size={56} strokeWidth={4} variant="accent" fillColor="var(--color-bg-hover)" />
+          <div className="min-w-0">
+            <p className="font-medium text-[var(--color-text-primary)] truncate">{project.name}</p>
+            <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
+          </div>
+        </div>
+        <Badge variant={PROJECT_PRIORITY_COLORS[project.priority]} size="sm">
+          {PROJECT_PRIORITY_LABELS[project.priority]}
+        </Badge>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <InlineStatusSelect project={project} onChange={onChangeStatus} />
+        {project.budget != null && (
+          <span className="text-caption text-[var(--color-text-muted)]">
+            {project.budget.toLocaleString('en-US')} so'm
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--color-bg-border)]">
+        <span className="flex items-center gap-1.5 text-caption text-[var(--color-text-secondary)]">
+          <Avatar name={project.managerName} src={project.managerAvatar} size="xs" />
+          {project.managerName}
+        </span>
+        {project.team.length > 0 && (
+          <div className="flex items-center">
+            {project.team.slice(0, 4).map((member, index) => (
+              <div key={member.userId} style={{ marginLeft: index ? -8 : 0 }} className="ring-2 ring-[var(--color-bg-surface)] rounded-full">
+                <Avatar name={member.name} src={member.avatar} size="xs" />
+              </div>
+            ))}
+            {project.team.length > 4 && (
+              <span className="ml-1 text-caption text-[var(--color-text-muted)]">+{project.team.length - 4}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-caption text-[var(--color-text-muted)]">
+        <span>{project.type}</span>
+        <span>{project.deadline ? formatShortDate(project.deadline) : '—'}</span>
+      </div>
+    </Card>
+  );
+}
 
 export function ProjectsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
 
   const { data: projects = [], isLoading } = useProjects();
+  const { data: employeeList = [] } = useEmployees();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const changeStatus = useChangeProjectStatus();
+
+  const employeeOptions = useMemo(
+    () => employeeList.map((e) => ({ value: e.userId, label: e.fullName })),
+    [employeeList]
+  );
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -56,7 +147,7 @@ export function ProjectsPage() {
 
   const handleFormSubmit = useCallback(async (data: ProjectFormData) => {
     if (editingProject) {
-      await updateProject.mutateAsync({ id: String(editingProject.id), data, managerId: editingProject.managerId });
+      await updateProject.mutateAsync({ id: String(editingProject.id), data });
     } else {
       await createProject.mutateAsync(data);
     }
@@ -111,80 +202,26 @@ export function ProjectsPage() {
         />
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="divide-y divide-[var(--color-bg-border)]">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="px-6 py-4 flex items-center gap-4">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-4 w-1/6" />
-                  <Skeleton className="h-4 w-1/6" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loyiha</TableHead>
-                  <TableHead>Mijoz</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Menejer</TableHead>
-                  <TableHead>Muddat</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProjects.map((project) => (
-                  <TableRow key={project.id} className="cursor-pointer" onClick={() => handleOpenEditForm(project)}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-[var(--color-text-primary)] truncate">{project.name}</p>
-                        <p className="text-caption text-[var(--color-text-muted)]">{project.type}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[var(--color-text-secondary)]">{project.client}</TableCell>
-                    <TableCell>
-                      <Badge variant={PROJECT_STATUS_COLORS[project.status]}>
-                        {PROJECT_STATUS_LABELS[project.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="w-28">
-                        <p className="text-body font-medium text-[var(--color-text-primary)] mb-1">{project.progress}%</p>
-                        <div className="h-1.5 bg-[var(--color-bg-border)] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[var(--color-accent)] transition-all duration-300"
-                            style={{ width: `${project.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar name={project.managerName} size="sm" />
-                        <span className="text-body">{project.managerName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-caption text-[var(--color-text-secondary)]">
-                      {project.deadline
-                        ? new Date(project.deadline).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short' })
-                        : '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {!isLoading && filteredProjects.length === 0 && (
+      {/* Card grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-[180px] rounded-[14px]" />)}
+        </div>
+      ) : filteredProjects.length === 0 ? (
         <Card className="py-12 text-center">
           <p className="text-[var(--color-text-secondary)]">Loyihalar topilmadi</p>
         </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onOpen={() => handleOpenEditForm(project)}
+              onChangeStatus={(status) => changeStatus.mutate({ id: String(project.id), status })}
+            />
+          ))}
+        </div>
       )}
 
       {/* Create/Edit Form Modal */}
@@ -195,6 +232,7 @@ export function ProjectsPage() {
         onDelete={editingProject ? () => handleOpenDelete(editingProject) : undefined}
         initialData={editingProject}
         isLoading={createProject.isPending || updateProject.isPending}
+        employees={employeeOptions}
       />
 
       {/* Delete Confirmation Modal */}

@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { projectsApi } from '../api/projectsApi';
-import { getAuthStore } from '@/features/auth/store/authStore';
 import type { ProjectFormData } from '../components/ProjectForm';
+import type { ProjectStatus } from '@/shared/types';
 
 export const useProjects = () =>
   useQuery({
@@ -14,11 +14,7 @@ export const useProjects = () =>
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: ProjectFormData) => {
-      const managerId = getAuthStore().user?.id;
-      if (!managerId) throw new Error('Foydalanuvchi aniqlanmadi');
-      return projectsApi.create(data, managerId);
-    },
+    mutationFn: (data: ProjectFormData) => projectsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Loyiha yaratildi');
@@ -32,14 +28,26 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data, managerId }: { id: string; data: ProjectFormData; managerId: string }) =>
-      projectsApi.update(id, data, managerId),
+    mutationFn: ({ id, data }: { id: string; data: ProjectFormData }) => projectsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Loyiha yangilandi');
     },
     onError: (error: { message?: string }) => {
       toast.error(error.message || 'Loyihani yangilashda xatolik yuz berdi');
+    },
+  });
+}
+
+export function useChangeProjectStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ProjectStatus }) => projectsApi.changeStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Statusni o\'zgartirishda xatolik yuz berdi');
     },
   });
 }

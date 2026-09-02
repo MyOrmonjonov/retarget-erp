@@ -113,6 +113,26 @@ export const PROJECT_STATUS_COLORS: Record<ProjectStatus, 'default' | 'success' 
   CANCELLED: 'error',
 };
 
+export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export const PROJECT_PRIORITY_LABELS: Record<ProjectPriority, string> = {
+  LOW: 'Past',
+  MEDIUM: "O'rta",
+  HIGH: 'Yuqori',
+};
+
+export const PROJECT_PRIORITY_COLORS: Record<ProjectPriority, 'default' | 'warning' | 'error'> = {
+  LOW: 'default',
+  MEDIUM: 'warning',
+  HIGH: 'error',
+};
+
+export interface ProjectTeamMember {
+  userId: string;
+  name: string;
+  avatar?: string;
+}
+
 export interface Project extends BaseEntity {
   name: string;
   client: string;
@@ -120,8 +140,11 @@ export interface Project extends BaseEntity {
   type: string;
   status: ProjectStatus;
   progress: number; // 0-100
+  priority: ProjectPriority;
   managerId: string;
   managerName: string;
+  managerAvatar?: string;
+  team: ProjectTeamMember[];
   deadline: string;
   startDate?: string;
   budget?: number;

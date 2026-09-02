@@ -1,6 +1,6 @@
 import { api } from '@/shared/lib/api';
 import { getAuthStore } from '@/features/auth/store/authStore';
-import type { Project, ProjectStatus } from '@/shared/types';
+import type { Project, ProjectStatus, ProjectPriority } from '@/shared/types';
 import type { ProjectFormData } from '../components/ProjectForm';
 
 interface ProjectDto {
@@ -12,8 +12,11 @@ interface ProjectDto {
   type: string | null;
   status: ProjectStatus;
   progress: number;
+  priority: ProjectPriority;
   managerId: number;
   managerName: string | null;
+  managerAvatar: string | null;
+  team: { userId: number; name: string; avatar: string | null }[];
   deadline: string | null;
   startDate: string | null;
   budget: number | null;
@@ -31,8 +34,11 @@ function toProject(dto: ProjectDto): Project {
     type: dto.type ?? '',
     status: dto.status,
     progress: dto.progress,
+    priority: dto.priority,
     managerId: String(dto.managerId),
     managerName: dto.managerName ?? '',
+    managerAvatar: dto.managerAvatar ?? undefined,
+    team: dto.team.map((m) => ({ userId: String(m.userId), name: m.name, avatar: m.avatar ?? undefined })),
     deadline: dto.deadline ?? '',
     startDate: dto.startDate ?? undefined,
     budget: dto.budget ?? undefined,
@@ -54,31 +60,35 @@ export const projectsApi = {
     return response.data.map(toProject);
   },
 
-  create: async (data: ProjectFormData, managerId: string): Promise<Project> => {
+  create: async (data: ProjectFormData): Promise<Project> => {
     const response = await api.post<ProjectDto>('/projects', {
       workspaceId: currentWorkspaceId(),
       name: data.name,
       clientName: data.client,
       type: data.type,
-      managerId: Number(managerId),
+      priority: data.priority,
+      managerId: Number(data.managerId),
       startDate: data.startDate || undefined,
       deadline: data.deadline,
       budget: data.budget ? Number(data.budget) : undefined,
       description: data.description || undefined,
+      teamUserIds: data.teamUserIds.map(Number),
     });
     return toProject(response.data);
   },
 
-  update: async (id: string, data: ProjectFormData, managerId: string): Promise<Project> => {
+  update: async (id: string, data: ProjectFormData): Promise<Project> => {
     const response = await api.put<ProjectDto>(`/projects/${id}`, {
       name: data.name,
       clientName: data.client,
       type: data.type,
-      managerId: Number(managerId),
+      priority: data.priority,
+      managerId: Number(data.managerId),
       startDate: data.startDate || undefined,
       deadline: data.deadline,
       budget: data.budget ? Number(data.budget) : undefined,
       description: data.description || undefined,
+      teamUserIds: data.teamUserIds.map(Number),
     });
     return toProject(response.data);
   },

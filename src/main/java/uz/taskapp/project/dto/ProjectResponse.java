@@ -1,11 +1,13 @@
 package uz.taskapp.project.dto;
 
 import uz.taskapp.project.ProjectEntity;
+import uz.taskapp.project.ProjectPriority;
 import uz.taskapp.project.ProjectStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public record ProjectResponse(
         Long id,
@@ -16,8 +18,11 @@ public record ProjectResponse(
         String type,
         ProjectStatus status,
         int progress,
+        ProjectPriority priority,
         Long managerId,
         String managerName,
+        String managerAvatar,
+        List<TeamMemberDto> team,
         LocalDate deadline,
         LocalDate startDate,
         BigDecimal budget,
@@ -25,7 +30,8 @@ public record ProjectResponse(
         Instant createdAt,
         Instant updatedAt
 ) {
-    public static ProjectResponse from(ProjectEntity project, String managerName) {
+    public static ProjectResponse from(ProjectEntity project, String managerName, String managerAvatar,
+                                        List<TeamMemberDto> team) {
         return new ProjectResponse(
                 project.getId(),
                 project.getWorkspaceId(),
@@ -35,8 +41,11 @@ public record ProjectResponse(
                 project.getType(),
                 project.getStatus(),
                 project.getProgress(),
+                project.getPriority(),
                 project.getManagerId(),
                 managerName,
+                managerAvatar,
+                team,
                 project.getDeadline(),
                 project.getStartDate(),
                 project.getBudget(),
@@ -44,5 +53,8 @@ public record ProjectResponse(
                 project.getCreatedAt(),
                 project.getUpdatedAt()
         );
+    }
+
+    public record TeamMemberDto(Long userId, String name, String avatar) {
     }
 }

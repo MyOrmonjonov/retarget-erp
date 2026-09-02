@@ -11,6 +11,7 @@ import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -18,12 +19,14 @@ import java.util.stream.Collectors;
 @Service
 public class ProjectService {
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository memberOfProjectRepository;
     private final WorkspaceMemberRepository memberRepository;
     private final UserRepository userRepository;
 
-    public ProjectService(ProjectRepository projectRepository, WorkspaceMemberRepository memberRepository,
-                           UserRepository userRepository) {
+    public ProjectService(ProjectRepository projectRepository, ProjectMemberRepository memberOfProjectRepository,
+                           WorkspaceMemberRepository memberRepository, UserRepository userRepository) {
         this.projectRepository = projectRepository;
+        this.memberOfProjectRepository = memberOfProjectRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
     }
@@ -34,9 +37,16 @@ public class ProjectService {
         List<ProjectEntity> projects = status == null
                 ? projectRepository.findAllByWorkspaceId(workspaceId)
                 : projectRepository.findAllByWorkspaceIdAndStatus(workspaceId, status);
-        Map<Long, String> managerNames = managerNames(projects);
+
+        List<Long> projectIds = projects.stream().map(ProjectEntity::getId).toList();
+        Map<Long, List<Long>> teamByProject = new LinkedHashMap<>();
+        for (ProjectMemberEntity m : memberOfProjectRepository.findAllByIdProjectIdIn(projectIds)) {
+            teamByProject.computeIfAbsent(m.getProjectId(), id -> new java.util.ArrayList<>()).add(m.getUserId());
+        }
+        Map<Long, UserEntity> usersById = usersById(projects, teamByProject);
+
         return projects.stream()
-                .map(project -> ProjectResponse.from(project, managerNames.get(project.getManagerId())))
+                .map(project -> toResponse(project, usersById, teamByProject.getOrDefault(project.getId(), List.of())))
                 .toList();
     }
 
@@ -44,7 +54,10 @@ public class ProjectService {
     public ProjectResponse detail(Long currentUserId, Long workspaceId, Long projectId) {
         requireMembership(workspaceId, currentUserId);
         ProjectEntity project = findWithinWorkspace(projectId, workspaceId);
-        return ProjectResponse.from(project, displayName(project.getManagerId()));
+        List<Long> teamUserIds = memberOfProjectRepository.findAllByIdProjectId(projectId).stream()
+                .map(ProjectMemberEntity::getUserId).toList();
+        Map<Long, UserEntity> usersById = usersById(List.of(project), Map.of(projectId, teamUserIds));
+        return toResponse(project, usersById, teamUserIds);
     }
 
     @Transactional
@@ -52,10 +65,11 @@ public class ProjectService {
         requireMembership(request.workspaceId(), currentUserId);
         requireMembership(request.workspaceId(), request.managerId());
         ProjectEntity project = new ProjectEntity(request.workspaceId(), request.name(), request.clientId(),
-                request.clientName(), request.type(), ProjectStatus.PLANNING, 0, request.managerId(),
-                request.startDate(), request.deadline(), request.budget(), request.description());
+                request.clientName(), request.type(), ProjectStatus.PLANNING, 0, request.priority(),
+                request.managerId(), request.startDate(), request.deadline(), request.budget(), request.description());
         project = projectRepository.save(project);
-        return ProjectResponse.from(project, displayName(project.getManagerId()));
+        replaceTeam(project.getId(), request.teamUserIds());
+        return detail(currentUserId, request.workspaceId(), project.getId());
     }
 
     @Transactional
@@ -63,9 +77,12 @@ public class ProjectService {
         requireMembership(workspaceId, currentUserId);
         requireMembership(workspaceId, request.managerId());
         ProjectEntity project = findWithinWorkspace(projectId, workspaceId);
-        project.update(request.name(), request.clientId(), request.clientName(), request.type(),
+        project.update(request.name(), request.clientId(), request.clientName(), request.type(), request.priority(),
                 request.managerId(), request.startDate(), request.deadline(), request.budget(), request.description());
-        return ProjectResponse.from(project, displayName(project.getManagerId()));
+        if (request.teamUserIds() != null) {
+            replaceTeam(projectId, request.teamUserIds());
+        }
+        return detail(currentUserId, workspaceId, projectId);
     }
 
     @Transactional
@@ -73,7 +90,7 @@ public class ProjectService {
         requireMembership(workspaceId, currentUserId);
         ProjectEntity project = findWithinWorkspace(projectId, workspaceId);
         project.changeStatus(status);
-        return ProjectResponse.from(project, displayName(project.getManagerId()));
+        return detail(currentUserId, workspaceId, projectId);
     }
 
     @Transactional
@@ -84,13 +101,32 @@ public class ProjectService {
         requireMembership(workspaceId, currentUserId);
         ProjectEntity project = findWithinWorkspace(projectId, workspaceId);
         project.updateProgress(progress);
-        return ProjectResponse.from(project, displayName(project.getManagerId()));
+        return detail(currentUserId, workspaceId, projectId);
     }
 
     @Transactional
     public void delete(Long currentUserId, Long workspaceId, Long projectId) {
         requireMembership(workspaceId, currentUserId);
         projectRepository.delete(findWithinWorkspace(projectId, workspaceId));
+    }
+
+    private void replaceTeam(Long projectId, List<Long> teamUserIds) {
+        memberOfProjectRepository.deleteAllByIdProjectId(projectId);
+        if (teamUserIds == null) return;
+        for (Long userId : teamUserIds.stream().distinct().toList()) {
+            memberOfProjectRepository.save(new ProjectMemberEntity(projectId, userId));
+        }
+    }
+
+    private ProjectResponse toResponse(ProjectEntity project, Map<Long, UserEntity> usersById, List<Long> teamUserIds) {
+        UserEntity manager = usersById.get(project.getManagerId());
+        List<ProjectResponse.TeamMemberDto> team = teamUserIds.stream()
+                .map(usersById::get)
+                .filter(u -> u != null)
+                .map(u -> new ProjectResponse.TeamMemberDto(u.getId(), displayName(u), u.getPhotoUrl()))
+                .toList();
+        return ProjectResponse.from(project, manager == null ? null : displayName(manager),
+                manager == null ? null : manager.getPhotoUrl(), team);
     }
 
     private ProjectEntity findWithinWorkspace(Long projectId, Long workspaceId) {
@@ -105,20 +141,18 @@ public class ProjectService {
         }
     }
 
-    private String displayName(Long userId) {
-        return userRepository.findById(userId).map(this::displayName).orElse(null);
-    }
-
     private String displayName(UserEntity user) {
         return user.getLastName() == null || user.getLastName().isBlank()
                 ? user.getFirstName()
                 : user.getFirstName() + " " + user.getLastName();
     }
 
-    private Map<Long, String> managerNames(List<ProjectEntity> projects) {
-        List<Long> managerIds = projects.stream().map(ProjectEntity::getManagerId).distinct().toList();
-        if (managerIds.isEmpty()) return Map.of();
-        return userRepository.findAllById(managerIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, this::displayName));
+    private Map<Long, UserEntity> usersById(List<ProjectEntity> projects, Map<Long, List<Long>> teamByProject) {
+        List<Long> ids = new java.util.ArrayList<>(projects.stream().map(ProjectEntity::getManagerId).distinct().toList());
+        teamByProject.values().forEach(ids::addAll);
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        if (distinctIds.isEmpty()) return Map.of();
+        return userRepository.findAllById(distinctIds).stream()
+                .collect(Collectors.toMap(UserEntity::getId, u -> u));
     }
 }
