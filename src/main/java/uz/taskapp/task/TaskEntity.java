@@ -74,6 +74,18 @@ public class TaskEntity {
     @Column
     private String platform;
 
+    /** Montaj bo'limi only - ported from the reference CRM's Montaj page ("Qayta ishlash" /
+     *  "Bajarildi" actions on a review-stage card). finishedAt/approvedBy are set together by
+     *  {@link #approve}; revisionCount increments each time {@link #requestRevision} is called. */
+    @Column(name = "revision_count", nullable = false)
+    private int revisionCount;
+
+    @Column(name = "finished_at")
+    private Instant finishedAt;
+
+    @Column(name = "approved_by")
+    private Long approvedBy;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -114,6 +126,17 @@ public class TaskEntity {
         this.format = format == null || format.isBlank() ? null : format.trim();
         this.platform = platform == null || platform.isBlank() ? null : platform.trim();
         this.updatedAt = Instant.now();
+    }
+
+    public void approve(Long approvedBy) {
+        changeStatus(TaskStatus.COMPLETED);
+        this.finishedAt = Instant.now();
+        this.approvedBy = approvedBy;
+    }
+
+    public void requestRevision() {
+        changeStatus(TaskStatus.BLOCKED);
+        this.revisionCount += 1;
     }
 
     public void linkTelegramMessage(Long telegramMessageId) {
@@ -174,6 +197,9 @@ public class TaskEntity {
     public Long getTelegramMessageId() { return telegramMessageId; }
     public String getFormat() { return format; }
     public String getPlatform() { return platform; }
+    public int getRevisionCount() { return revisionCount; }
+    public Instant getFinishedAt() { return finishedAt; }
+    public Long getApprovedBy() { return approvedBy; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -50,6 +50,9 @@ interface TaskDto {
   topicId: number | null;
   format: string | null;
   platform: string | null;
+  revisionCount: number;
+  finishedAt: string | null;
+  approvedByName: string | null;
 }
 
 // Backend has no analog for frontend priority MEDIUM/backend NORMAL naming, but the two
@@ -105,6 +108,10 @@ export interface TaskListItem extends Omit<Task, 'id'> {
   assigneeIds: string[];
   checklistSummary: string;
   fileCount: number;
+  /** Montaj bo'limi only. */
+  revisionCount: number;
+  finishedAt?: string;
+  approvedByName?: string;
 }
 
 /** Full detail (fetched on open-to-edit) - includes actual checklist rows and attachment metadata. */
@@ -144,6 +151,9 @@ function toTaskListItem(dto: TaskDto): TaskListItem {
     tags: dto.format ? [dto.format] : [],
     checklistSummary: dto.checklist,
     fileCount: dto.files,
+    revisionCount: dto.revisionCount,
+    finishedAt: dto.finishedAt ?? undefined,
+    approvedByName: dto.approvedByName ?? undefined,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
   };
@@ -256,6 +266,22 @@ export const tasksApi = {
 
   changeStatus: async (id: string, status: TaskStatus): Promise<TaskListItem> => {
     const response = await api.patch<TaskDto>(`/tasks/${id}/status`, { status: STATUS_TO_BACKEND[status] });
+    return toTaskListItem(response.data);
+  },
+
+  /** Montaj bo'limi: drag-to-reassign between editor columns, or an editor's "Olish" claim. */
+  reassign: async (id: string, assigneeIds: string[]): Promise<TaskListItem> => {
+    const response = await api.patch<TaskDto>(`/tasks/${id}/reassign`, { assigneeIds: assigneeIds.map(Number) });
+    return toTaskListItem(response.data);
+  },
+
+  approve: async (id: string): Promise<TaskListItem> => {
+    const response = await api.patch<TaskDto>(`/tasks/${id}/approve`, {});
+    return toTaskListItem(response.data);
+  },
+
+  requestRevision: async (id: string): Promise<TaskListItem> => {
+    const response = await api.patch<TaskDto>(`/tasks/${id}/request-revision`, {});
     return toTaskListItem(response.data);
   },
 

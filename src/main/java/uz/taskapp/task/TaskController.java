@@ -125,9 +125,26 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{taskId}/reassign")
+    TaskService.TaskResponse reassign(HttpServletRequest request, @PathVariable Long taskId,
+                                       @Valid @RequestBody ReassignRequest body) {
+        return taskService.reassign(userId(request), taskId, body.assigneeIds());
+    }
+
+    @PatchMapping("/{taskId}/approve")
+    TaskService.TaskResponse approve(HttpServletRequest request, @PathVariable Long taskId) {
+        return taskService.approve(userId(request), taskId);
+    }
+
+    @PatchMapping("/{taskId}/request-revision")
+    TaskService.TaskResponse requestRevision(HttpServletRequest request, @PathVariable Long taskId) {
+        return taskService.requestRevision(userId(request), taskId);
+    }
+
     private Long userId(HttpServletRequest request) {
         return (Long) request.getAttribute(AuthInterceptor.USER_ID_ATTRIBUTE);
     }
 
     public record ChangeStatusRequest(@jakarta.validation.constraints.NotNull TaskStatus status) {}
+    public record ReassignRequest(List<Long> assigneeIds) {}
 }

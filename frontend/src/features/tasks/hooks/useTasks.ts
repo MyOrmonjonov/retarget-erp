@@ -51,6 +51,47 @@ export function useChangeTaskStatus() {
   });
 }
 
+export function useReassignTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, assigneeIds }: { id: string; assigneeIds: string[] }) => tasksApi.reassign(id, assigneeIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || "Vazifani qayta tayinlashda xatolik yuz berdi");
+    },
+  });
+}
+
+export function useApproveTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tasksApi.approve(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Vazifa bajarildi deb belgilandi');
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Vazifani yakunlashda xatolik yuz berdi');
+    },
+  });
+}
+
+export function useRequestTaskRevision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tasksApi.requestRevision(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Vazifa qayta ishlashga yuborildi');
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Amalni bajarishda xatolik yuz berdi');
+    },
+  });
+}
+
 export function useDeleteTask() {
   const queryClient = useQueryClient();
   return useMutation({

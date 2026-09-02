@@ -265,6 +265,50 @@ public class TaskService {
         return detail(currentUserId, taskId);
     }
 
+    /** Montaj bo'limi: reassigning a card to a different editor column, or an editor claiming
+     *  an unassigned ("Tayinlanmagan") one - both are just a full assignee-list replacement. */
+    @Transactional
+    public TaskResponse reassign(Long currentUserId, Long taskId, List<Long> assigneeIds) {
+        TaskEntity task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "Vazifa topilmadi"));
+        requireMembership(task.getWorkspaceId(), currentUserId);
+        assigneeRepository.deleteAllByIdTaskId(taskId);
+        List<Long> distinctIds = assigneeIds == null ? List.of() : assigneeIds.stream().distinct().toList();
+        assigneeRepository.saveAll(distinctIds.stream().map(userId -> new TaskAssigneeEntity(taskId, userId)).toList());
+        insertHistory(taskId, currentUserId, "REASSIGNED", "{\"assigneeIds\":" + distinctIds + "}");
+        runAfterCommit(() -> broadcastService.notifyTaskChanged(task.getWorkspaceId(), task.getId(), currentUserId));
+        return detail(currentUserId, taskId);
+    }
+
+    /** Montaj bo'limi "Bajarildi" action on a review-stage card. */
+    @Transactional
+    public TaskResponse approve(Long currentUserId, Long taskId) {
+        TaskEntity task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "Vazifa topilmadi"));
+        requireMembership(task.getWorkspaceId(), currentUserId);
+        TaskStatus previous = task.getStatus();
+        task.approve(currentUserId);
+        insertHistory(taskId, currentUserId, "STATUS_CHANGED",
+                "{\"from\":\"" + previous + "\",\"to\":\"" + TaskStatus.COMPLETED + "\"}");
+        runAfterCommit(() -> broadcastService.notifyTaskChanged(task.getWorkspaceId(), task.getId(), currentUserId));
+        return detail(currentUserId, taskId);
+    }
+
+    /** Montaj bo'limi "Qayta ishlash" action - sends a review-stage card back to work (BLOCKED,
+     *  matching EDITING_DEPT_COLUMNS' existing "Qayta ishlash" mapping) and counts the revision. */
+    @Transactional
+    public TaskResponse requestRevision(Long currentUserId, Long taskId) {
+        TaskEntity task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "Vazifa topilmadi"));
+        requireMembership(task.getWorkspaceId(), currentUserId);
+        TaskStatus previous = task.getStatus();
+        task.requestRevision();
+        insertHistory(taskId, currentUserId, "STATUS_CHANGED",
+                "{\"from\":\"" + previous + "\",\"to\":\"" + TaskStatus.BLOCKED + "\"}");
+        runAfterCommit(() -> broadcastService.notifyTaskChanged(task.getWorkspaceId(), task.getId(), currentUserId));
+        return detail(currentUserId, taskId);
+    }
+
     @Transactional
     public TaskResponse update(Long currentUserId, Long taskId, UpdateTaskRequest request) {
         return update(currentUserId, taskId, request, List.of());
@@ -643,7 +687,8 @@ public class TaskService {
                 includeDetails ? assigneeDetails(assignees) : List.of(),
                 includeDetails ? checklistItems(task.getId()) : List.of(),
                 includeDetails ? attachmentDetails(task.getId()) : List.of(), reminderMinutes, task.getDeletedAt(),
-                task.getSequenceNumber(), task.getFormat(), task.getPlatform());
+                task.getSequenceNumber(), task.getFormat(), task.getPlatform(), task.getRevisionCount(),
+                task.getFinishedAt(), task.getApprovedBy() == null ? null : displayName(task.getApprovedBy()));
     }
 
     private List<TaskPersonResponse> assigneeDetails(List<Long> userIds) {
@@ -1035,7 +1080,8 @@ public class TaskService {
                                String author, String groupName, String topicName, List<TaskPersonResponse> assignees,
                                List<TaskChecklistItemResponse> checklistItems,
                                List<TaskAttachmentResponse> attachments, Integer reminderMinutes,
-                               Instant archivedAt, Long sequenceNumber, String format, String platform) {
+                               Instant archivedAt, Long sequenceNumber, String format, String platform,
+                               int revisionCount, Instant finishedAt, String approvedByName) {
         public String code() {
             return "TASK-" + String.format("%04d", sequenceNumber);
         }
