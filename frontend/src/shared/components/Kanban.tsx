@@ -210,27 +210,27 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading
 // task statuses 1:1 (via shared/types' TaskStatus mapping) so real tasks land in a column;
 // there's no backend concept of a separate "approved" sub-stage before IN_PROGRESS.
 export const DESIGN_DEPT_COLUMNS: KanbanColumn[] = [
-  { id: 'new-tz', title: 'Yangi TZ', status: 'TODO', color: '#9A9A9A' },
-  { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#C6FF3D' },
-  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
-  { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#FF3B30' },
-  { id: 'done', title: 'Yakunlandi', status: 'DONE', color: '#007AFF' },
+  { id: 'new-tz', title: 'Yangi TZ', status: 'TODO', color: '#6B7280' },
+  { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#2563EB' },
+  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#D97706' },
+  { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#DC2626' },
+  { id: 'done', title: 'Yakunlandi', status: 'DONE', color: '#16A34A' },
 ];
 
 // Default column configurations for Editing Dept
 export const EDITING_DEPT_COLUMNS: KanbanColumn[] = [
-  { id: 'pending', title: 'Kutilmoqda', status: 'TODO', color: '#9A9A9A' },
-  { id: 'editing', title: 'Montajda', status: 'IN_PROGRESS', color: '#C6FF3D' },
-  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
-  { id: 'rework', title: 'Qayta ishlash', status: 'BLOCKED', color: '#FF3B30' },
-  { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#34C759' },
+  { id: 'pending', title: 'Kutilmoqda', status: 'TODO', color: '#6B7280' },
+  { id: 'editing', title: 'Montajda', status: 'IN_PROGRESS', color: '#2563EB' },
+  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#D97706' },
+  { id: 'rework', title: 'Qayta ishlash', status: 'BLOCKED', color: '#DC2626' },
+  { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#16A34A' },
 ];
 
 // Default column configurations for the Target (all-tasks) board
 export const TARGET_COLUMNS: KanbanColumn[] = [
-  { id: 'new', title: 'Yangi', status: 'TODO', color: '#9A9A9A' },
-  { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#C6FF3D' },
-  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#FF9F0A' },
-  { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#FF3B30' },
-  { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#34C759' },
+  { id: 'new', title: 'Yangi', status: 'TODO', color: '#6B7280' },
+  { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#2563EB' },
+  { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#D97706' },
+  { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#DC2626' },
+  { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#16A34A' },
 ];

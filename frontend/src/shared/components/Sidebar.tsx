@@ -53,7 +53,7 @@ export function Sidebar() {
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-accent)] transition-transform duration-150 hover:scale-105"
               aria-label="Retarget ERP - Bosh sahifa"
             >
-              <span className="text-[16px] font-bold text-black">R</span>
+              <span className="text-[16px] font-bold text-white">R</span>
             </Link>
           )}
 
@@ -102,10 +102,10 @@ export function Sidebar() {
                               : 'flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors',
                             isActive
                               ? isSidebarCollapsed
-                                ? 'bg-[var(--color-accent)] text-black shadow-[0_2px_10px_-2px_rgba(198,255,61,0.5)]'
-                                : 'bg-[#C6FF3D26] text-[var(--color-accent)]'
+                                ? 'bg-[var(--color-accent)] text-white shadow-[0_2px_10px_-2px_rgba(37,99,235,0.4)]'
+                                : 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
                               : cn(
-                                  'text-[#E6E6E6] hover:text-[var(--color-text-primary)]',
+                                  'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
                                   isSidebarCollapsed ? 'hover:bg-[var(--color-bg-hover)]' : 'hover:bg-[var(--color-bg-hover)]'
                                 )
                           )

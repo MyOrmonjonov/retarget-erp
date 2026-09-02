@@ -11,11 +11,11 @@ import { useDashboardStats, useProjectStatus, useTopEmployee, useTeamLoad, useMo
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/shared/types';
 
 const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: string }> = {
-  ACTIVE: { backgroundColor: '#23261A', color: '#C6FF3D' },
-  PLANNING: { backgroundColor: '#2A2A2E', color: '#9A9A9A' },
-  ON_HOLD: { backgroundColor: '#3A2E1F', color: '#FF9F0A' },
-  COMPLETED: { backgroundColor: '#16301F', color: '#34C759' },
-  CANCELLED: { backgroundColor: '#3A1F1F', color: '#FF3B30' },
+  ACTIVE: { backgroundColor: '#2563EB1F', color: '#2563EB' },
+  PLANNING: { backgroundColor: '#6B72801F', color: '#6B7280' },
+  ON_HOLD: { backgroundColor: '#D977061F', color: '#D97706' },
+  COMPLETED: { backgroundColor: '#16A34A1F', color: '#16A34A' },
+  CANCELLED: { backgroundColor: '#DC26261F', color: '#DC2626' },
 };
 
 const MOTIVATION_STAGES = ['Past', 'Zaif', 'Nazorat', 'Yaxshi', "A'lo"];
@@ -94,7 +94,7 @@ export function DashboardPage() {
                         size={44}
                         strokeWidth={3}
                         variant="accent"
-                        fillColor="#23261A"
+                        fillColor="var(--color-bg-hover)"
                       />
                       <div className="min-w-0">
                         <p className="text-body font-medium text-[var(--color-text-primary)] truncate">
@@ -148,15 +148,15 @@ export function DashboardPage() {
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-[10px] bg-[#23261A] px-2 py-2 text-center">
+                    <div className="rounded-[10px] bg-[var(--color-bg-hover)] px-2 py-2 text-center">
                       <p className="text-caption text-[var(--color-text-muted)]">KPI</p>
                       <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.kpiScore}%</p>
                     </div>
-                    <div className="rounded-[10px] bg-[#23261A] px-2 py-2 text-center">
+                    <div className="rounded-[10px] bg-[var(--color-bg-hover)] px-2 py-2 text-center">
                       <p className="text-caption text-[var(--color-text-muted)]">Bajarildi</p>
                       <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.completedTasks}</p>
                     </div>
-                    <div className="rounded-[10px] bg-[#23261A] px-2 py-2 text-center">
+                    <div className="rounded-[10px] bg-[var(--color-bg-hover)] px-2 py-2 text-center">
                       <p className="text-caption text-[var(--color-text-muted)]">Loyihalar</p>
                       <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.projectCount}</p>
                     </div>

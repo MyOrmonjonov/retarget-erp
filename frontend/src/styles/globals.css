@@ -1,37 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  /* Colors - Dark Theme with Neon Green Accent */
-  --color-bg-primary: #121212;
-  --color-bg-sidebar: #1A1A1D;
-  --color-bg-surface: #1E1E22;
-  --color-bg-border: #323238;
-  --color-bg-hover: #26262A;
+  /* Colors - Light theme, muted blue accent (moved off the old black+neon look) */
+  --color-bg-primary: #F7F8FA;
+  --color-bg-sidebar: #FFFFFF;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-border: #E4E7EB;
+  --color-bg-hover: #F0F2F5;
 
-  --color-accent: #C6FF3D;
-  --color-accent-hover: #B0E035;
-  --color-accent-muted: #C6FF3D33;
+  --color-accent: #2563EB;
+  --color-accent-hover: #1D4ED8;
+  --color-accent-muted: #2563EB1F;
 
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #9A9A9A;
-  --color-text-muted: #6B6B6B;
+  --color-text-primary: #1A1D21;
+  --color-text-secondary: #5B6472;
+  --color-text-muted: #8A93A3;
 
-  --color-success: #34C759;
-  --color-success-muted: #34C75933;
+  --color-success: #16A34A;
+  --color-success-muted: #16A34A1F;
 
-  --color-warning: #FF9F0A;
-  --color-warning-muted: #FF9F0A33;
+  --color-warning: #D97706;
+  --color-warning-muted: #D977061F;
 
-  --color-error: #FF3B30;
-  --color-error-muted: #FF3B3033;
+  --color-error: #DC2626;
+  --color-error-muted: #DC26261F;
 
   /* Role Colors */
-  --color-role-ceo: #C6FF3D;
-  --color-role-manager: #34C759;
-  --color-role-supervisor: #007AFF;
-  --color-role-editor: #FF9F0A;
-  --color-role-staff: #AF52DE;
-  --color-role-operator: #FF3B30;
+  --color-role-ceo: #2563EB;
+  --color-role-manager: #16A34A;
+  --color-role-supervisor: #0891B2;
+  --color-role-editor: #D97706;
+  --color-role-staff: #7C3AED;
+  --color-role-operator: #DC2626;
 
   /* Typography */
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -68,11 +68,11 @@
   --radius-xl: 1rem;     /* 16px */
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-  --shadow-glow: 0 0 20px rgb(198 255 61 / 0.3);
+  /* Shadows - lighter than the old dark-theme values, tuned for a white/light-grey surface */
+  --shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(16 24 40 / 0.10), 0 4px 6px -4px rgb(16 24 40 / 0.06);
+  --shadow-glow: 0 0 20px rgb(37 99 235 / 0.25);
 
   /* Transitions */
   --transition-fast: 150ms ease;
