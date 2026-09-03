@@ -8,9 +8,10 @@ import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { Plus, Search, Trash2, Check, ListChecks, Paperclip } from 'lucide-react';
+import { Plus, Search, Trash2, Check, ListChecks, Paperclip, List, LayoutGrid } from 'lucide-react';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
-import type { TaskPriority } from '@/shared/types';
+import type { Task, TaskPriority, TaskStatus } from '@/shared/types';
+import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
 import { TaskForm, type TaskFormData } from '../components/TaskForm';
 import type { TaskListItem, TaskDetail } from '../api/tasksApi';
 import { tasksApi } from '../api/tasksApi';
@@ -104,6 +105,7 @@ function TaskRow({ task, onEdit, onComplete, onDelete }: { task: TaskListItem; o
 export function TasksPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterValue>('FAOL');
+  const [view, setView] = useState<'list' | 'board'>('list');
 
   const currentUser = useUser();
   const { data: tasks = [], isLoading } = useTasks();
@@ -174,11 +176,11 @@ export function TasksPage() {
     setIsFormOpen(true);
   }, []);
 
-  const handleOpenEditForm = useCallback(async (task: TaskListItem) => {
+  const handleOpenEditForm = useCallback(async (task: Task) => {
     setIsFormLoading(true);
     setIsFormOpen(true);
     try {
-      const detail = await tasksApi.detail(task.id);
+      const detail = await tasksApi.detail(String(task.id));
       setEditingTask(detail);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Vazifa ma'lumotini olishda xatolik yuz berdi");
@@ -205,6 +207,10 @@ export function TasksPage() {
   const handleComplete = useCallback((task: TaskListItem) => {
     if (task.status === 'DONE') return;
     changeStatus.mutate({ id: task.id, status: 'DONE' });
+  }, [changeStatus]);
+
+  const handleMove = useCallback((taskId: string, newStatus: TaskStatus) => {
+    changeStatus.mutate({ id: taskId, status: newStatus });
   }, [changeStatus]);
 
   const handleOpenDelete = useCallback((task: TaskListItem) => {
@@ -247,14 +253,49 @@ export function TasksPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
           <Input placeholder="Vazifa qidirish..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
+        <div className="flex items-center gap-1 rounded-lg bg-[var(--color-bg-hover)] p-1">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            aria-label="Ro'yxat ko'rinishi"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors ${
+              view === 'list' ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-secondary)]'
+            }`}
+          >
+            <List className="h-4 w-4" /> Ro'yxat
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('board')}
+            aria-label="Doska ko'rinishi"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors ${
+              view === 'board' ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-secondary)]'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" /> Doska
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-[68px] w-full rounded-[14px]" />
-          ))}
-        </div>
+        view === 'board' ? (
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[380px] w-[300px] flex-shrink-0 rounded-[14px]" />)}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-[68px] w-full rounded-[14px]" />
+            ))}
+          </div>
+        )
+      ) : view === 'board' ? (
+        <KanbanBoard
+          columns={TARGET_COLUMNS}
+          tasks={filteredTasks}
+          onTaskMove={handleMove}
+          onTaskClick={handleOpenEditForm}
+        />
       ) : (
         <div className="space-y-6">
           {todayTasks.length > 0 && (
