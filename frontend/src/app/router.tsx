@@ -10,6 +10,7 @@ import { NotFoundPage } from './routes/NotFoundPage';
 import { AuthGatePage } from '@/features/auth/components/AuthGatePage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { ProjectsPage } from '@/features/projects/pages/ProjectsPage';
+import { ProjectDetailPage } from '@/features/projects/pages/ProjectDetailPage';
 import { TasksPage } from '@/features/tasks/pages/TasksPage';
 import { EmployeesPage } from '@/features/employees/pages/EmployeesPage';
 import { EmployeeProfilePage } from '@/features/employees/pages/EmployeeProfilePage';
@@ -58,6 +59,14 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth>
                 <ProjectsPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/projects/:id',
+            element: (
+              <RequireAuth>
+                <ProjectDetailPage />
               </RequireAuth>
             ),
           },

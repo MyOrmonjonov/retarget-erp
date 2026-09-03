@@ -9,7 +9,8 @@ import { Avatar } from '@/shared/ui/avatar';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Pencil } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { Project, ProjectStatus } from '@/shared/types';
 import { PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS } from '@/shared/types';
 import { ProjectForm, type ProjectFormData } from '../components/ProjectForm';
@@ -44,9 +45,10 @@ function InlineStatusSelect({ project, onChange }: { project: Project; onChange:
   );
 }
 
-function ProjectCard({ project, onOpen, onChangeStatus }: {
+function ProjectCard({ project, onOpen, onEdit, onChangeStatus }: {
   project: Project;
   onOpen: () => void;
+  onEdit: () => void;
   onChangeStatus: (status: ProjectStatus) => void;
 }) {
   return (
@@ -59,9 +61,19 @@ function ProjectCard({ project, onOpen, onChangeStatus }: {
             <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
           </div>
         </div>
-        <Badge variant={PROJECT_PRIORITY_COLORS[project.priority]} size="sm">
-          {PROJECT_PRIORITY_LABELS[project.priority]}
-        </Badge>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant={PROJECT_PRIORITY_COLORS[project.priority]} size="sm">
+            {PROJECT_PRIORITY_LABELS[project.priority]}
+          </Badge>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            aria-label="Tahrirlash"
+            className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -101,6 +113,7 @@ function ProjectCard({ project, onOpen, onChangeStatus }: {
 }
 
 export function ProjectsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
 
@@ -217,7 +230,8 @@ export function ProjectsPage() {
             <ProjectCard
               key={project.id}
               project={project}
-              onOpen={() => handleOpenEditForm(project)}
+              onOpen={() => navigate(`/projects/${project.id}`)}
+              onEdit={() => handleOpenEditForm(project)}
               onChangeStatus={(status) => changeStatus.mutate({ id: String(project.id), status })}
             />
           ))}
