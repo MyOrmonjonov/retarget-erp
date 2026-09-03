@@ -45,13 +45,16 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 /** Inline badge style per role (roles need arbitrary brand colors outside Badge's fixed variant set) */
+// Deliberately restrained: only CEO gets an accent tint (the one role worth distinguishing
+// at a glance) - every other role reads as the same neutral gray tag. Color stays reserved
+// for actual status semantics elsewhere, not for tagging who's who.
 export const ROLE_BADGE_STYLE: Record<UserRole, { backgroundColor: string; color: string }> = {
   CEO: { backgroundColor: '#E8F0FE', color: '#0071E3' },
-  MENEJER: { backgroundColor: '#E8FBED', color: '#34C759' },
-  BOSHQARUVCHI: { backgroundColor: '#EDF8FF', color: '#5AC8FA' },
-  MONTAJOR: { backgroundColor: '#FFF4E5', color: '#FF9F0A' },
-  HODIM: { backgroundColor: '#F5EEFF', color: '#AF52DE' },
-  OPERATOR: { backgroundColor: '#EEEEFE', color: '#5856D6' },
+  MENEJER: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
+  BOSHQARUVCHI: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
+  MONTAJOR: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
+  HODIM: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
+  OPERATOR: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
 };
 
 /** Auth */

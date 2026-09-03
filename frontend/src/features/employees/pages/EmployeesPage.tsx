@@ -19,9 +19,11 @@ import { useUser } from '@/features/auth/store/authStore';
 
 type EmployeeWithUserId = Employee & { userId: string };
 
+// A muted, cohesive palette (not primary/saturated hues) - department is a grouping aid,
+// not a status signal, so the dots stay quiet rather than competing for attention.
 const DEPARTMENT_DOT_COLORS = [
-  'bg-[var(--color-accent)]', 'bg-[var(--color-role-supervisor)]', 'bg-[var(--color-warning)]',
-  'bg-[var(--color-success)]', 'bg-[var(--color-error)]', 'bg-[var(--color-text-muted)]',
+  'bg-[var(--color-accent)]', 'bg-[#8E8CD8]', 'bg-[#C9A26D]',
+  'bg-[#6BAE8E]', 'bg-[#B87F95]', 'bg-[var(--color-text-muted)]',
 ];
 
 /** Groups employees under their free-text `department` field, matching the reference CRM's

@@ -27,13 +27,16 @@
   --color-error: #FF3B30;
   --color-error-muted: #FFF0EF;
 
-  /* Role Colors */
+  /* Role Colors - deliberately restrained: a role tag isn't a semantic state the way task/
+     project status is, so every role reads as the same neutral gray except CEO (the one
+     role worth visually distinguishing at a glance). Color stays reserved for real signal:
+     success/warning/error and the accent itself. */
   --color-role-ceo: #0071E3;
-  --color-role-manager: #34C759;
-  --color-role-supervisor: #5AC8FA;
-  --color-role-editor: #FF9F0A;
-  --color-role-staff: #AF52DE;
-  --color-role-operator: #5856D6;
+  --color-role-manager: #6E6E73;
+  --color-role-supervisor: #6E6E73;
+  --color-role-editor: #6E6E73;
+  --color-role-staff: #6E6E73;
+  --color-role-operator: #6E6E73;
 
   /* Typography */
   --font-family-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
@@ -245,19 +248,23 @@
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight);
     letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 
   .text-h2 {
     font-size: var(--font-size-h2);
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
   }
 
   .text-h3 {
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-semibold);
     line-height: var(--line-height-normal);
+    letter-spacing: -0.005em;
+    text-wrap: balance;
   }
 
   .text-body {
