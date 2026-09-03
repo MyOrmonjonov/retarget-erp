@@ -110,8 +110,8 @@ public class DashboardService {
                 .map(p -> {
                     UserEntity manager = p.getManagerId() == null ? null
                             : usersById.computeIfAbsent(p.getManagerId(), id -> userRepository.findById(id).orElse(null));
-                    return new ProjectStatusDto(p.getId(), p.getName(), p.getClientName(), p.getStatus().name(),
-                            progressByProject.getOrDefault(p.getId(), 0),
+                    return new ProjectStatusDto(p.getId(), p.getName(), p.getClientName(), p.getType(), p.getStatus().name(),
+                            p.getPriority().name(), progressByProject.getOrDefault(p.getId(), 0),
                             manager == null ? null : displayName(manager), manager == null ? null : manager.getPhotoUrl());
                 })
                 .toList();
@@ -211,7 +211,7 @@ public class DashboardService {
                                   int completedTasks, int projectCount) {
     }
 
-    public record ProjectStatusDto(Long id, String name, String client, String status, int progress,
-                                    String managerName, String managerAvatar) {
+    public record ProjectStatusDto(Long id, String name, String client, String type, String status, String priority,
+                                    int progress, String managerName, String managerAvatar) {
     }
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { StatCard } from '@/shared/components/StatCard';
 import { Badge } from '@/shared/ui/badge';
@@ -8,7 +9,13 @@ import { Progress } from '@/shared/ui/progress';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useDashboardStats, useProjectStatus, useTopEmployee, useTeamLoad, useMotivationScore } from '../hooks/useDashboard';
-import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/shared/types';
+import { PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS, type ProjectStatus } from '@/shared/types';
+
+function progressColor(pct: number): 'success' | 'accent' | 'warning' {
+  if (pct >= 75) return 'success';
+  if (pct >= 40) return 'accent';
+  return 'warning';
+}
 
 function motivationColor(score: number): string {
   if (score >= 70) return 'var(--color-success)';
@@ -34,6 +41,7 @@ const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: strin
 const MOTIVATION_STAGES = ['Past', 'Xavf', 'Nazorat', 'Yaxshi', "A'lo"];
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: projectStatus, isLoading: projectsLoading } = useProjectStatus();
   const { data: topEmployee, isLoading: topEmployeeLoading } = useTopEmployee();
@@ -75,7 +83,7 @@ export function DashboardPage() {
         {/* Left Column - Project Status */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="!text-[16px] !font-bold">Loyihalar holati</CardTitle>
+            <CardTitle className="!text-[18px] !font-black">Loyihalar holati</CardTitle>
             <p className="mt-1 text-caption text-[var(--color-text-secondary)]">
               Status va progress bo'yicha tez ko'rinish
             </p>
@@ -99,30 +107,40 @@ export function DashboardPage() {
                 {projectStatus.map((project) => (
                   <div
                     key={project.id}
-                    className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-[var(--color-bg-hover)] transition-colors"
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    className="px-6 py-4 flex items-center gap-4 cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors"
                   >
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="relative flex-shrink-0">
                       <CircularProgress
                         value={project.progress}
-                        size={44}
-                        strokeWidth={3}
-                        variant="accent"
+                        size={54}
+                        strokeWidth={5}
+                        variant={progressColor(project.progress)}
                         fillColor="var(--color-bg-hover)"
                       />
-                      <div className="min-w-0">
-                        <p className="text-body font-medium text-[var(--color-text-primary)] truncate">
-                          {project.name}
-                        </p>
-                        <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body font-semibold text-[var(--color-text-primary)] truncate">
+                        {project.name}
+                      </p>
+                      <p className="mt-0.5 text-caption text-[var(--color-text-secondary)] truncate">
+                        {project.client} &middot; {project.type || "Xizmat turi kiritilmagan"}
+                      </p>
+                      <div className="mt-1">
+                        <Badge style={statusStyle[project.status]}>{PROJECT_STATUS_LABELS[project.status]}</Badge>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                      <Badge style={statusStyle[project.status]}>{PROJECT_STATUS_LABELS[project.status]}</Badge>
+                    <div className="text-right flex-shrink-0">
+                      <Badge variant={PROJECT_PRIORITY_COLORS[project.priority]} size="sm">
+                        {PROJECT_PRIORITY_LABELS[project.priority]}
+                      </Badge>
                       {project.managerName && (
-                        <span className="flex items-center gap-1.5 text-caption text-[var(--color-text-secondary)]">
+                        <div className="flex items-center justify-end gap-1.5 mt-2">
                           <Avatar name={project.managerName} src={project.managerAvatar} size="xs" />
-                          {project.managerName}
-                        </span>
+                          <span className="text-caption text-[var(--color-text-secondary)]">
+                            {project.managerName.split(' ')[0]}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -138,7 +156,7 @@ export function DashboardPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="!text-[16px] !font-bold">Oyning TOP xodimi</CardTitle>
+              <CardTitle className="!text-[18px] !font-black">Oyning TOP xodimi</CardTitle>
             </CardHeader>
             <CardContent>
               {topEmployeeLoading ? (
@@ -183,7 +201,7 @@ export function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="!text-[16px] !font-bold">Jamoa yuklamasi</CardTitle>
+              <CardTitle className="!text-[18px] !font-black">Jamoa yuklamasi</CardTitle>
               <p className="mt-1 text-caption text-[var(--color-text-secondary)]">
                 Faol tasklar asosiy vazn bilan, kechikkan tasklar bosim sifatida, loyiha soni esa yengil ta'sir bilan hisoblanadi.
               </p>

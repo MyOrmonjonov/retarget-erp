@@ -1,5 +1,5 @@
 import { api } from '@/shared/lib/api';
-import type { DashboardStats, ProjectStatus } from '@/shared/types';
+import type { DashboardStats, ProjectPriority, ProjectStatus } from '@/shared/types';
 
 interface DashboardOverviewDto {
   totalProjects: number;
@@ -31,7 +31,9 @@ interface DashboardOverviewDto {
     id: number;
     name: string;
     client: string;
+    type: string | null;
     status: ProjectStatus;
+    priority: ProjectPriority;
     progress: number;
     managerName: string | null;
     managerAvatar: string | null;
@@ -88,7 +90,9 @@ export const dashboardApi = {
       id: p.id,
       name: p.name,
       client: p.client,
+      type: p.type ?? undefined,
       status: p.status,
+      priority: p.priority,
       progress: p.progress,
       managerName: p.managerName ?? undefined,
       managerAvatar: p.managerAvatar ?? undefined,
