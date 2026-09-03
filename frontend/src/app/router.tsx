@@ -25,6 +25,8 @@ import { FinancePage } from '@/features/finance/pages/FinancePage';
 import { MappingPage } from '@/features/mapping/pages/MappingPage';
 import { ReportsPage } from '@/features/reports/pages/ReportsPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
+import { SubscriptionPage } from '@/features/subscription/pages/SubscriptionPage';
+import { PaymentPage } from '@/features/subscription/pages/PaymentPage';
 
 const router = createBrowserRouter([
   {
@@ -179,6 +181,22 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth>
                 <SettingsPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/subscription',
+            element: (
+              <RequireAuth allowedRoles={['CEO']}>
+                <SubscriptionPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/subscription/payment',
+            element: (
+              <RequireAuth allowedRoles={['CEO']}>
+                <PaymentPage />
               </RequireAuth>
             ),
           },
