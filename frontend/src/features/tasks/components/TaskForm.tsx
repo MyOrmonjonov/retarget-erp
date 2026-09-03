@@ -99,6 +99,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: 'TODO', label: 'Yangi' },
   { value: 'IN_PROGRESS', label: 'Jarayonda' },
+  { value: 'EDITING', label: 'Montajda' },
   { value: 'REVIEW', label: "Ko'rib chiqilmoqda" },
   { value: 'DONE', label: 'Bajarildi' },
   { value: 'BLOCKED', label: 'Bloklangan' },

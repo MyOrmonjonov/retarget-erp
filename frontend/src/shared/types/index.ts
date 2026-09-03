@@ -159,7 +159,7 @@ export interface Project extends BaseEntity {
 
 /** Task */
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'BLOCKED';
+export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'EDITING' | 'REVIEW' | 'DONE' | 'BLOCKED';
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   LOW: 'Past',
@@ -179,6 +179,7 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   BACKLOG: 'Backlog',
   TODO: 'Yangi',
   IN_PROGRESS: 'Jarayonda',
+  EDITING: 'Montajda',
   REVIEW: 'Ko\'rib chiqilmoqda',
   DONE: 'Bajarildi',
   BLOCKED: 'Bloklangan',
@@ -188,6 +189,7 @@ export const TASK_STATUS_COLORS: Record<TaskStatus, 'default' | 'success' | 'war
   BACKLOG: 'default',
   TODO: 'default',
   IN_PROGRESS: 'success',
+  EDITING: 'success',
   REVIEW: 'warning',
   DONE: 'success',
   BLOCKED: 'error',
@@ -336,6 +338,7 @@ export type ShootingEventType = 'PHOTO' | 'VIDEO' | 'EVENT' | 'INTERVIEW';
 export type ShootingEventStatus = 'PLANNING' | 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
 
 export interface ShootingEvent extends BaseEntity {
+  projectId?: string;
   title: string;
   date: string;
   startTime: string;

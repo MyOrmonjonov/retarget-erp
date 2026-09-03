@@ -1027,6 +1027,7 @@ public class TaskService {
                     : previous == TaskStatus.REVIEW
                     ? "↩️ " + actor + " vazifani qayta ishlashga qaytardi."
                     : "▶️ " + actor + " vazifani davom ettirdi.";
+            case IN_EDITING -> "🎬 " + actor + " vazifani montajga oldi.";
             case BLOCKED -> "⚠️ " + actor + " vazifada muammo borligini bildirdi.";
             case REVIEW -> "🔎 " + actor + " vazifani tekshiruvga yubordi.";
             case COMPLETED -> previous == TaskStatus.REVIEW

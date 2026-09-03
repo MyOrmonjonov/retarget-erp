@@ -63,7 +63,7 @@ public class DashboardService {
         int completedTasks = count("SELECT COUNT(*) FROM tasks WHERE workspace_id = ? AND deleted_at IS NULL " +
                 "AND status = 'COMPLETED'", workspaceId);
         int activeTasksTotal = count("SELECT COUNT(*) FROM tasks WHERE workspace_id = ? AND deleted_at IS NULL " +
-                "AND status IN ('NEW','IN_PROGRESS','REVIEW')", workspaceId);
+                "AND status IN ('NEW','IN_PROGRESS','IN_EDITING','REVIEW')", workspaceId);
         int overdueTasksTotal = count("SELECT COUNT(*) FROM tasks WHERE workspace_id = ? AND deleted_at IS NULL " +
                 "AND status NOT IN ('COMPLETED','CANCELLED') AND due_at IS NOT NULL AND due_at < now()", workspaceId);
         int reviewTasksTotal = count("SELECT COUNT(*) FROM tasks WHERE workspace_id = ? AND deleted_at IS NULL " +

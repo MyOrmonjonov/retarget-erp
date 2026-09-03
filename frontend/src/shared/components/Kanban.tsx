@@ -230,6 +230,7 @@ export const EDITING_DEPT_COLUMNS: KanbanColumn[] = [
 export const TARGET_COLUMNS: KanbanColumn[] = [
   { id: 'new', title: 'Yangi', status: 'TODO', color: '#6B7280' },
   { id: 'in-progress', title: 'Jarayonda', status: 'IN_PROGRESS', color: '#2563EB' },
+  { id: 'editing', title: 'Montajda', status: 'EDITING', color: '#7C3AED' },
   { id: 'review', title: 'Ko\'rib chiqilmoqda', status: 'REVIEW', color: '#D97706' },
   { id: 'blocked', title: 'Bloklangan', status: 'BLOCKED', color: '#DC2626' },
   { id: 'done', title: 'Bajarildi', status: 'DONE', color: '#16A34A' },

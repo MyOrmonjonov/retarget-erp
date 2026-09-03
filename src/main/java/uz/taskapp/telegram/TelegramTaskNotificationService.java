@@ -348,7 +348,7 @@ public class TelegramTaskNotificationService {
                     new InlineKeyboardButton[]{
                             taskActionButton("⚠️ Muammo bor", "PROBLEM", taskId),
                             taskActionButton("🔎 Tekshiruv", "REVIEW", taskId)});
-            case IN_PROGRESS -> new InlineKeyboardMarkup(
+            case IN_PROGRESS, IN_EDITING -> new InlineKeyboardMarkup(
                     new InlineKeyboardButton[]{
                             taskActionButton("⚠️ Muammo bor", "PROBLEM", taskId),
                             taskActionButton("🔎 Tekshiruvga yuborish", "REVIEW", taskId)});
@@ -365,6 +365,7 @@ public class TelegramTaskNotificationService {
         return switch (status) {
             case NEW -> "Yangi";
             case IN_PROGRESS -> "Jarayonda";
+            case IN_EDITING -> "Montajda";
             case BLOCKED -> "Kutilmoqda";
             case REVIEW -> "Tekshiruvda";
             case COMPLETED -> "Bajarildi";

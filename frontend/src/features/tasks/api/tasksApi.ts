@@ -3,7 +3,7 @@ import { getAuthStore } from '@/features/auth/store/authStore';
 import type { Task, TaskPriority, TaskStatus } from '@/shared/types';
 
 type BackendPriority = 'LOW' | 'NORMAL' | 'IMPORTANT' | 'URGENT';
-type BackendStatus = 'NEW' | 'IN_PROGRESS' | 'REVIEW' | 'BLOCKED' | 'COMPLETED' | 'CANCELLED';
+type BackendStatus = 'NEW' | 'IN_PROGRESS' | 'IN_EDITING' | 'REVIEW' | 'BLOCKED' | 'COMPLETED' | 'CANCELLED';
 
 interface TaskPersonDto {
   id: number;
@@ -77,6 +77,7 @@ const PRIORITY_TO_BACKEND: Record<TaskPriority, BackendPriority> = {
 const STATUS_TO_FRONTEND: Record<Exclude<BackendStatus, 'CANCELLED'>, TaskStatus> = {
   NEW: 'TODO',
   IN_PROGRESS: 'IN_PROGRESS',
+  IN_EDITING: 'EDITING',
   REVIEW: 'REVIEW',
   BLOCKED: 'BLOCKED',
   COMPLETED: 'DONE',
@@ -85,6 +86,7 @@ const STATUS_TO_BACKEND: Record<TaskStatus, BackendStatus> = {
   BACKLOG: 'NEW',
   TODO: 'NEW',
   IN_PROGRESS: 'IN_PROGRESS',
+  EDITING: 'IN_EDITING',
   REVIEW: 'REVIEW',
   DONE: 'COMPLETED',
   BLOCKED: 'BLOCKED',

@@ -258,6 +258,7 @@ public class TelegramCommandService {
         return switch (status) {
             case NEW -> "🆕";
             case IN_PROGRESS -> "▶️";
+            case IN_EDITING -> "🎬";
             case BLOCKED -> "⚠️";
             case REVIEW -> "🔎";
             case COMPLETED -> "✅";
