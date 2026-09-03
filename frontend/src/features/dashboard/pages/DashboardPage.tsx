@@ -10,6 +10,19 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { useDashboardStats, useProjectStatus, useTopEmployee, useTeamLoad, useMotivationScore } from '../hooks/useDashboard';
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/shared/types';
 
+function motivationColor(score: number): string {
+  if (score >= 70) return 'var(--color-success)';
+  if (score >= 40) return 'var(--color-warning)';
+  return 'var(--color-error)';
+}
+
+function motivationLabel(score: number): string {
+  if (score >= 75) return 'Ishlar juda yaxshi';
+  if (score >= 50) return 'Jarayon nazoratda';
+  if (score >= 30) return "Tezkor e'tibor kerak";
+  return 'Kritik signal';
+}
+
 const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: string }> = {
   ACTIVE: { backgroundColor: '#E8F0FE', color: '#0071E3' },
   PLANNING: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
@@ -18,7 +31,7 @@ const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: strin
   CANCELLED: { backgroundColor: '#FFF0EF', color: '#FF3B30' },
 };
 
-const MOTIVATION_STAGES = ['Past', 'Zaif', 'Nazorat', 'Yaxshi', "A'lo"];
+const MOTIVATION_STAGES = ['Past', 'Xavf', 'Nazorat', 'Yaxshi', "A'lo"];
 
 export function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
@@ -204,26 +217,54 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Motivation Score */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[16px] font-bold text-[var(--color-text-primary)]">Motivatsion ko'rsatkich</h3>
-            {!motivationLoading && (
-              <span className="text-[28px] font-bold leading-tight text-[var(--color-success)]">{motivationScore ?? 0}%</span>
-            )}
+      {/* Motivation Score - a gradient "thermometer" bar with a needle marker, ported from
+          the reference CRM's MotivationGauge (not a filled progress bar - the gradient is
+          static red->amber->green and the needle marks the actual position on it). */}
+      <Card className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-[18px] font-black text-[var(--color-text-primary)]">Motivatsion ko'rsatkich</h3>
+            <p className="mt-2 text-body leading-relaxed text-[var(--color-text-muted)]">
+              Agentlik va jamoa holati umumiy task bajarilishi, ortda qolgan deadline va tasdiq holatlariga qarab hisoblanadi.
+            </p>
           </div>
-          {motivationLoading ? (
-            <Skeleton className="h-[18px] w-full rounded-[9px]" />
-          ) : (
-            <Progress value={motivationScore ?? 0} max={100} variant="success" style={{ height: 18 }} />
+          {!motivationLoading && (
+            <span
+              className="text-[32px] font-black leading-none flex-shrink-0"
+              style={{ color: motivationColor(motivationScore ?? 0) }}
+            >
+              {motivationScore ?? 0}%
+            </span>
           )}
-          <div className="mt-2 flex items-center justify-between text-caption text-[var(--color-text-muted)]">
-            {MOTIVATION_STAGES.map((stage) => (
-              <span key={stage}>{stage}</span>
-            ))}
+        </div>
+
+        {motivationLoading ? (
+          <Skeleton className="mt-[22px] h-[22px] w-full rounded-full" />
+        ) : (
+          <div className="relative mt-[22px] pt-[18px]">
+            <div
+              className="h-[22px] rounded-full border border-[var(--color-bg-border)]"
+              style={{ background: 'linear-gradient(90deg, var(--color-error) 0%, var(--color-warning) 45%, var(--color-success) 100%)' }}
+            />
+            <div className="mt-2 grid grid-cols-5 text-[11px] font-bold text-[var(--color-text-muted)]">
+              {MOTIVATION_STAGES.map((stage) => (
+                <span key={stage}>{stage}</span>
+              ))}
+            </div>
+            <div
+              className="absolute top-0 flex justify-center"
+              style={{ left: `${motivationScore ?? 0}%`, transform: 'translateX(-50%)', width: 18, height: 50 }}
+            >
+              <div className="w-1.5 h-full rounded-full bg-[var(--color-text-primary)]" />
+            </div>
           </div>
-        </CardContent>
+        )}
+
+        {!motivationLoading && (
+          <p className="mt-3.5 font-extrabold text-[var(--color-text-primary)]">
+            {motivationLabel(motivationScore ?? 0)}
+          </p>
+        )}
       </Card>
     </div>
   );
