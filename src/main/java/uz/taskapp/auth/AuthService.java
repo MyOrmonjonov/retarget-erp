@@ -4,7 +4,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.taskapp.common.ApiException;
-import uz.taskapp.config.AppProperties;
 import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
 import uz.taskapp.workspace.WorkspaceEntity;
@@ -21,20 +20,17 @@ public class AuthService {
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository memberRepository;
-    private final AppProperties appProperties;
 
     public AuthService(TelegramInitDataVerifier verifier,
                        AccessTokenService tokenService,
                        UserRepository userRepository,
                        WorkspaceRepository workspaceRepository,
-                       WorkspaceMemberRepository memberRepository,
-                       AppProperties appProperties) {
+                       WorkspaceMemberRepository memberRepository) {
         this.verifier = verifier;
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.workspaceRepository = workspaceRepository;
         this.memberRepository = memberRepository;
-        this.appProperties = appProperties;
     }
 
     @Transactional
@@ -52,15 +48,18 @@ public class AuthService {
 
         List<WorkspaceMemberEntity> memberships = memberRepository.findAllByUserIdAndActiveTrue(user.getId())
                 .stream().filter(member -> !member.isTemporarilyBlocked()).toList();
-        if (memberships.isEmpty() && telegram.id() == appProperties.bootstrapOwnerTelegramId()) {
+        // Self-service tenant provisioning: any brand-new Telegram user (no existing membership
+        // anywhere) gets their own private workspace as OWNER on first login - this used to be
+        // gated to a single hardcoded bootstrapOwnerTelegramId, which meant nobody but the app's
+        // own developer could ever sign up. That gate made sense for a single-tenant internal
+        // tool; it's a hard launch-blocker for selling this as a multi-tenant subscription
+        // product, since every other real customer would hit INVITATION_REQUIRED on their very
+        // first open and have no way in.
+        if (memberships.isEmpty()) {
             WorkspaceEntity workspace = workspaceRepository.save(
                     new WorkspaceEntity("Mening ish maydonim", preferredLanguage(telegram.languageCode()), user.getId()));
             memberships = List.of(memberRepository.save(
                     new WorkspaceMemberEntity(workspace.getId(), user.getId(), "OWNER")));
-        }
-        if (memberships.isEmpty()) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "INVITATION_REQUIRED",
-                    "Ilovadan foydalanish uchun ish maydoniga taklif kerak");
         }
 
         List<AuthWorkspace> workspaces = memberships.stream()
