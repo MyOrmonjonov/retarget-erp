@@ -4,9 +4,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.taskapp.common.ApiException;
+import uz.taskapp.contentplan.ContentPlanItemEntity;
+import uz.taskapp.contentplan.ContentPlanItemRepository;
 import uz.taskapp.project.dto.CreateProjectRequest;
 import uz.taskapp.project.dto.ProjectResponse;
 import uz.taskapp.project.dto.UpdateProjectRequest;
+import uz.taskapp.task.TaskEntity;
+import uz.taskapp.task.TaskRepository;
+import uz.taskapp.task.TaskStatus;
 import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
@@ -22,13 +27,18 @@ public class ProjectService {
     private final ProjectMemberRepository memberOfProjectRepository;
     private final WorkspaceMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
+    private final ContentPlanItemRepository contentPlanItemRepository;
 
     public ProjectService(ProjectRepository projectRepository, ProjectMemberRepository memberOfProjectRepository,
-                           WorkspaceMemberRepository memberRepository, UserRepository userRepository) {
+                           WorkspaceMemberRepository memberRepository, UserRepository userRepository,
+                           TaskRepository taskRepository, ContentPlanItemRepository contentPlanItemRepository) {
         this.projectRepository = projectRepository;
         this.memberOfProjectRepository = memberOfProjectRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
+        this.taskRepository = taskRepository;
+        this.contentPlanItemRepository = contentPlanItemRepository;
     }
 
     @Transactional(readOnly = true)
@@ -44,9 +54,11 @@ public class ProjectService {
             teamByProject.computeIfAbsent(m.getProjectId(), id -> new java.util.ArrayList<>()).add(m.getUserId());
         }
         Map<Long, UserEntity> usersById = usersById(projects, teamByProject);
+        Map<Long, Integer> progressByProject = computeProgress(projectIds);
 
         return projects.stream()
-                .map(project -> toResponse(project, usersById, teamByProject.getOrDefault(project.getId(), List.of())))
+                .map(project -> toResponse(project, usersById, teamByProject.getOrDefault(project.getId(), List.of()),
+                        progressByProject.getOrDefault(project.getId(), 0)))
                 .toList();
     }
 
@@ -57,7 +69,34 @@ public class ProjectService {
         List<Long> teamUserIds = memberOfProjectRepository.findAllByIdProjectId(projectId).stream()
                 .map(ProjectMemberEntity::getUserId).toList();
         Map<Long, UserEntity> usersById = usersById(List.of(project), Map.of(projectId, teamUserIds));
-        return toResponse(project, usersById, teamUserIds);
+        int progress = computeProgress(List.of(projectId)).getOrDefault(projectId, 0);
+        return toResponse(project, usersById, teamUserIds, progress);
+    }
+
+    // Ported from the reference CRM's calculateProjectAggregate - only the reachable subset:
+    // the reference's other 4 sources (mediaPlan, project-scoped targetTasks, plans, calls) feed
+    // tabs that are dead code in the reference's own UI, so for any project a real user could
+    // actually build there, the formula already reduces to tasks + contentPlan (+ design tasks,
+    // which in our schema are just regular tasks with a format tag, already counted once).
+    private Map<Long, Integer> computeProgress(List<Long> projectIds) {
+        if (projectIds.isEmpty()) return Map.of();
+        Map<Long, long[]> totals = new LinkedHashMap<>(); // [total, done]
+        for (Long id : projectIds) totals.put(id, new long[2]);
+        for (TaskEntity task : taskRepository.findAllByProjectIdInAndDeletedAtIsNull(projectIds)) {
+            long[] stat = totals.get(task.getProjectId());
+            if (stat == null) continue;
+            stat[0]++;
+            if (task.getStatus() == TaskStatus.COMPLETED) stat[1]++;
+        }
+        for (ContentPlanItemEntity item : contentPlanItemRepository.findAllByProjectIdIn(projectIds)) {
+            long[] stat = totals.get(item.getProjectId());
+            if (stat == null) continue;
+            stat[0]++;
+            if (item.getStatuses() != null && item.getStatuses().contains("Post qilindi")) stat[1]++;
+        }
+        Map<Long, Integer> result = new LinkedHashMap<>();
+        totals.forEach((id, stat) -> result.put(id, stat[0] == 0 ? 0 : (int) Math.round(stat[1] * 100.0 / stat[0])));
+        return result;
     }
 
     @Transactional
@@ -129,7 +168,8 @@ public class ProjectService {
         }
     }
 
-    private ProjectResponse toResponse(ProjectEntity project, Map<Long, UserEntity> usersById, List<Long> teamUserIds) {
+    private ProjectResponse toResponse(ProjectEntity project, Map<Long, UserEntity> usersById, List<Long> teamUserIds,
+                                        int progress) {
         UserEntity manager = usersById.get(project.getManagerId());
         List<ProjectResponse.TeamMemberDto> team = teamUserIds.stream()
                 .map(usersById::get)
@@ -137,7 +177,7 @@ public class ProjectService {
                 .map(u -> new ProjectResponse.TeamMemberDto(u.getId(), displayName(u), u.getPhotoUrl()))
                 .toList();
         return ProjectResponse.from(project, manager == null ? null : displayName(manager),
-                manager == null ? null : manager.getPhotoUrl(), team);
+                manager == null ? null : manager.getPhotoUrl(), team, progress);
     }
 
     private ProjectEntity findWithinWorkspace(Long projectId, Long workspaceId) {
