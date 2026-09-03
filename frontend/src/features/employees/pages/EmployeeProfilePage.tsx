@@ -8,6 +8,8 @@ import { Avatar } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
 import { Progress } from '@/shared/ui/progress';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Trophy } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { ROLE_LABELS } from '@/shared/types';
 import { useEmployees } from '../hooks/useEmployees';
@@ -161,7 +163,7 @@ export function EmployeeProfilePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {teamRating.length === 0 ? (
-            <p className="text-center text-[var(--color-text-secondary)] py-4">Ma'lumot yo'q</p>
+            <EmptyState icon={Trophy} title="Ma'lumot yo'q" className="py-4" />
           ) : (
             teamRating.map((row, i) => (
               <div key={row.id}>

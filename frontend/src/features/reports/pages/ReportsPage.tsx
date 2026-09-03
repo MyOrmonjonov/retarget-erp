@@ -7,6 +7,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Progress } from '@/shared/ui/progress';
 import { StatCard } from '@/shared/components/StatCard';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { BarChart } from 'lucide-react';
 import { useProjects, useUpdateProjectReport } from '@/features/projects/hooks/useProjects';
 import type { Project } from '@/shared/types';
 
@@ -82,7 +84,7 @@ export function ReportsPage() {
           {isLoading ? (
             <div className="p-6 space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
           ) : projects.length === 0 ? (
-            <p className="text-center text-[var(--color-text-secondary)] py-8">Loyihalar topilmadi</p>
+            <EmptyState icon={BarChart} title="Loyihalar topilmadi" description="Hisobot ko'rish uchun avval loyiha yarating." />
           ) : (
             <Table>
               <TableHeader>

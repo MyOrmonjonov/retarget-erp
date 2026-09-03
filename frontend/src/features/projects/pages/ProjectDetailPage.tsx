@@ -11,11 +11,12 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { ArrowLeft, Plus, List, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Plus, List, LayoutGrid, FolderKanban, CheckSquare } from 'lucide-react';
+import { EmptyState } from '@/shared/components/EmptyState';
 import { toast } from 'sonner';
 import {
   PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS,
-  TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS,
+  TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS, TASK_STATUS_COLORS,
   type Task, type TaskStatus,
 } from '@/shared/types';
 import { formatShortDate } from '@/shared/lib/utils';
@@ -151,11 +152,12 @@ export function ProjectDetailPage() {
 
   if (!project) {
     return (
-      <Card className="py-12 text-center">
-        <p className="text-[var(--color-text-secondary)]">Loyiha topilmadi</p>
-        <Button variant="secondary" onClick={() => navigate('/projects')} className="mt-4 mx-auto">
-          Loyihalarga qaytish
-        </Button>
+      <Card>
+        <EmptyState
+          icon={FolderKanban}
+          title="Loyiha topilmadi"
+          action={<Button variant="secondary" onClick={() => navigate('/projects')}>Loyihalarga qaytish</Button>}
+        />
       </Card>
     );
   }
@@ -263,8 +265,8 @@ export function ProjectDetailPage() {
                 onTaskClick={handleOpenEditTask}
               />
             ) : monthTasks.length === 0 ? (
-              <Card className="py-12 text-center">
-                <p className="text-[var(--color-text-secondary)]">{monthLabel(activeMonth)} uchun vazifa topilmadi</p>
+              <Card>
+                <EmptyState icon={CheckSquare} title="Vazifa topilmadi" description={`${monthLabel(activeMonth)} uchun vazifa yo'q.`} />
               </Card>
             ) : (
               <div className="space-y-2">
@@ -273,7 +275,7 @@ export function ProjectDetailPage() {
                     <p className="flex-1 min-w-0 truncate text-body text-[var(--color-text-primary)]">{task.title}</p>
                     <Badge variant={TASK_PRIORITY_COLORS[task.priority]} size="sm">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
                     <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
-                    <Badge size="sm">{TASK_STATUS_LABELS[task.status]}</Badge>
+                    <Badge variant={TASK_STATUS_COLORS[task.status]} size="sm" dot>{TASK_STATUS_LABELS[task.status]}</Badge>
                     <span className="text-caption text-[var(--color-text-muted)] w-16 text-right flex-shrink-0">{formatShortDate(task.dueDate)}</span>
                   </Card>
                 ))}

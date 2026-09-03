@@ -12,6 +12,8 @@ import { Input } from '@/shared/ui/input';
 import { Avatar } from '@/shared/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs';
 import { StatCard } from '@/shared/components/StatCard';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { CreditCard, Users, Receipt, Wallet } from 'lucide-react';
 import { financeApi } from '../api/financeApi';
 import { employeesApi } from '@/features/employees/api/employeesApi';
 import { useUser } from '@/features/auth/store/authStore';
@@ -137,7 +139,7 @@ function FinanceDashboardTab() {
           {isLoading ? (
             <div className="p-6 space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
           ) : !data || data.projects.length === 0 ? (
-            <p className="text-center text-[var(--color-text-secondary)] py-8">Loyihalar topilmadi</p>
+            <EmptyState icon={CreditCard} title="Loyihalar topilmadi" />
           ) : (
             <Table>
               <TableHeader>
@@ -180,7 +182,7 @@ function FinanceDashboardTab() {
           {isLoading ? (
             <div className="p-6 space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
           ) : !data || data.employees.length === 0 ? (
-            <p className="text-center text-[var(--color-text-secondary)] py-8">Xodimlar topilmadi</p>
+            <EmptyState icon={Users} title="Xodimlar topilmadi" />
           ) : (
             <Table>
               <TableHeader>
@@ -324,7 +326,7 @@ function InvoicingTab({
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
               </div>
             ) : invoices.length === 0 ? (
-              <p className="text-center text-[var(--color-text-secondary)] py-8">Hisob-fakturalar topilmadi</p>
+              <EmptyState icon={Receipt} title="Hisob-fakturalar topilmadi" />
             ) : (
               <Table>
                 <TableHeader>
@@ -363,7 +365,7 @@ function InvoicingTab({
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
               </div>
             ) : expenses.length === 0 ? (
-              <p className="text-center text-[var(--color-text-secondary)] py-8">Xarajatlar topilmadi</p>
+              <EmptyState icon={Wallet} title="Xarajatlar topilmadi" />
             ) : (
               <Table>
                 <TableHeader>

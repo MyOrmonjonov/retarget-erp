@@ -7,9 +7,10 @@ import { Avatar } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
 import { Select } from '@/shared/ui/select';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Plus, Check, RotateCcw } from 'lucide-react';
+import { Plus, Check, RotateCcw, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilterPills } from '@/shared/components/FilterPills';
+import { EmptyState } from '@/shared/components/EmptyState';
 import type { Task, TaskStatus } from '@/shared/types';
 import { TaskForm, type TaskFormData } from '@/features/tasks/components/TaskForm';
 import { tasksApi, type TaskDetail, type TaskListItem } from '@/features/tasks/api/tasksApi';
@@ -78,7 +79,7 @@ function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestR
     >
       <div className="flex items-start justify-between gap-2" onClick={onOpen} role="button" tabIndex={0}>
         <p className="text-body font-medium text-[var(--color-text-primary)] line-clamp-2 cursor-pointer">{task.title}</p>
-        <Badge variant={MONTAJ_STATUS_COLORS[task.status]} size="sm" className="flex-shrink-0">
+        <Badge variant={MONTAJ_STATUS_COLORS[task.status]} size="sm" dot className="flex-shrink-0">
           {MONTAJ_STATUS_LABELS[task.status]}
         </Badge>
       </div>
@@ -292,11 +293,12 @@ export function EditingDeptPage() {
           ))}
         </div>
       ) : editors.length === 0 ? (
-        <Card className="py-12 text-center px-6">
-          <p className="text-[var(--color-text-secondary)]">
-            "Montaj" departmentiga biriktirilgan xodim topilmadi. Hodimlar bo'limida xodim profilida
-            departmentni "Montaj" deb belgilang.
-          </p>
+        <Card>
+          <EmptyState
+            icon={Video}
+            title="Montaj departmentiga xodim biriktirilmagan"
+            description={'Hodimlar bo\'limida xodim profilida departmentni "Montaj" deb belgilang.'}
+          />
         </Card>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4" role="region" aria-label="Montaj doskasi">

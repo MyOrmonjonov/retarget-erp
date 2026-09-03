@@ -12,7 +12,8 @@ import { Button } from '@/shared/ui/button';
 import { FilterPills } from '@/shared/components/FilterPills';
 import { StatCard } from '@/shared/components/StatCard';
 import { CircularProgress } from '@/shared/components/CircularProgress';
-import { Plus, List, LayoutGrid } from 'lucide-react';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Plus, List, LayoutGrid, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Task, TaskStatus } from '@/shared/types';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
@@ -226,11 +227,12 @@ export function DesignDeptPage() {
           ))}
         </div>
       ) : !hasDeptEmployees ? (
-        <Card className="py-12 text-center px-6">
-          <p className="text-[var(--color-text-secondary)]">
-            "Dizayn" departmentiga biriktirilgan xodim topilmadi. Hodimlar bo'limida xodim profilida
-            departmentni "Dizayn" deb belgilang.
-          </p>
+        <Card>
+          <EmptyState
+            icon={Palette}
+            title="Dizayn departmentiga xodim biriktirilmagan"
+            description={'Hodimlar bo\'limida xodim profilida departmentni "Dizayn" deb belgilang.'}
+          />
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 items-start">
@@ -284,9 +286,7 @@ export function DesignDeptPage() {
                 onTaskClick={handleOpenEditForm}
               />
             ) : listGroups.length === 0 ? (
-              <p className="text-center text-[var(--color-text-secondary)] py-12">
-                {monthLabel(activeMonth)} uchun mos TZ topilmadi
-              </p>
+              <EmptyState icon={Palette} title="TZ topilmadi" description={`${monthLabel(activeMonth)} uchun mos TZ yo'q.`} />
             ) : (
               <div className="space-y-5">
                 {listGroups.map((group) => (
@@ -297,7 +297,7 @@ export function DesignDeptPage() {
                         <p className="text-body font-semibold text-[var(--color-text-primary)] truncate">{group.name}</p>
                         <p className="text-caption text-[var(--color-text-muted)]">{group.total} ta TZ &middot; {group.done} bajarildi</p>
                       </div>
-                      <Badge variant={TASK_STATUS_COLORS[group.dominant]} size="sm">{TASK_STATUS_LABELS[group.dominant]}</Badge>
+                      <Badge variant={TASK_STATUS_COLORS[group.dominant]} size="sm" dot>{TASK_STATUS_LABELS[group.dominant]}</Badge>
                     </div>
                     <div className="space-y-1">
                       {group.tasks.map((task) => (

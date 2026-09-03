@@ -8,9 +8,10 @@ import { Select, type SelectOption } from '@/shared/ui/select';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
+import { EmptyState } from '@/shared/components/EmptyState';
 import type { ShootingEvent, ShootingEventStatus, ShootingEventType } from '@/shared/types';
 import {
   useShootingEvents, useCreateShootingEvent, useUpdateShootingEvent, useDeleteShootingEvent,
@@ -124,8 +125,8 @@ export function ShootingPage() {
           ))}
         </div>
       ) : projectColumns.length === 0 ? (
-        <Card className="py-12 text-center">
-          <p className="text-[var(--color-text-secondary)]">Hali loyiha yo'q</p>
+        <Card>
+          <EmptyState icon={Camera} title="Hali loyiha yo'q" description="Loyiha yaratilgach, uning syomka jadvali shu yerda ko'rinadi." />
         </Card>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">

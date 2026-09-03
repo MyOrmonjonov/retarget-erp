@@ -9,9 +9,10 @@ import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Input } from '@/shared/ui/input';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Users } from 'lucide-react';
 import { EmployeeForm, type EmployeeFormData } from '../components/EmployeeForm';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
+import { EmptyState } from '@/shared/components/EmptyState';
 import { ROLE_BADGE_STYLE, ROLE_LABELS, type Employee } from '@/shared/types';
 import { useEmployees, useAvailableMembers, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from '../hooks/useEmployees';
 import { employeesApi } from '../api/employeesApi';
@@ -277,8 +278,8 @@ export function EmployeesPage() {
       )}
 
       {!isLoading && employees.length === 0 && (
-        <Card variant="default" className="py-12 text-center">
-          <p className="text-[var(--color-text-secondary)]">Hodimlar topilmadi</p>
+        <Card variant="default">
+          <EmptyState icon={Users} title="Hodimlar topilmadi" description="Birinchi xodimni qo'shib boshlang." />
         </Card>
       )}
 

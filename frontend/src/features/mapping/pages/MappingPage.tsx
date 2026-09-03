@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Map } from 'lucide-react';
 import { mappingApi } from '../api/mappingApi';
 
 export function MappingPage() {
@@ -24,9 +26,7 @@ export function MappingPage() {
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
             </div>
           ) : !flow ? (
-            <p className="text-center text-[var(--color-text-secondary)] py-8">
-              Jarayon sxemasi topilmadi
-            </p>
+            <EmptyState icon={Map} title="Jarayon sxemasi topilmadi" />
           ) : (
             <>
               <p className="text-caption text-[var(--color-text-muted)] mb-6">{flow.name}</p>

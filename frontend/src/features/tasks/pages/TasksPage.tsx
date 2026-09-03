@@ -8,7 +8,8 @@ import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { Plus, Search, Trash2, Check, ListChecks, Paperclip, List, LayoutGrid } from 'lucide-react';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Plus, Search, Trash2, Check, ListChecks, Paperclip, List, LayoutGrid, CheckSquare } from 'lucide-react';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
 import type { Task, TaskPriority, TaskStatus } from '@/shared/types';
 import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
@@ -94,7 +95,7 @@ function TaskRow({ task, onEdit, onComplete, onDelete }: { task: TaskListItem; o
       <span className="hidden sm:block text-caption text-[var(--color-text-muted)] w-12">
         {new Date(task.dueDate).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
       </span>
-      <Badge variant={TASK_STATUS_COLORS[task.status]}>{TASK_STATUS_LABELS[task.status]}</Badge>
+      <Badge variant={TASK_STATUS_COLORS[task.status]} dot>{TASK_STATUS_LABELS[task.status]}</Badge>
       <Button variant="ghost" size="icon" onClick={onDelete} aria-label="O'chirish">
         <Trash2 className="h-4 w-4 text-[var(--color-error)]" />
       </Button>
@@ -332,8 +333,12 @@ export function TasksPage() {
           )}
 
           {filteredTasks.length === 0 && (
-            <Card className="py-12 text-center">
-              <p className="text-[var(--color-text-secondary)]">Vazifalar topilmadi</p>
+            <Card>
+              <EmptyState
+                icon={CheckSquare}
+                title="Vazifalar topilmadi"
+                description="Qidiruv yoki filtrni o'zgartiring, yoki yangi vazifa yarating."
+              />
             </Card>
           )}
         </div>

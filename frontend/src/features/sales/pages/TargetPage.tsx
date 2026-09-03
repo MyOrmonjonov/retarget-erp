@@ -7,7 +7,8 @@ import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Button } from '@/shared/ui/button';
 import { CircularProgress } from '@/shared/components/CircularProgress';
-import { Plus } from 'lucide-react';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Plus, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
 import type { Task } from '@/shared/types';
@@ -179,7 +180,7 @@ export function TargetPage() {
                           <Badge variant={TASK_PRIORITY_COLORS[task.priority]} size="sm">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
                           <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
                         </div>
-                        <Badge variant={TASK_STATUS_COLORS[task.status]} size="sm">{TASK_STATUS_LABELS[task.status]}</Badge>
+                        <Badge variant={TASK_STATUS_COLORS[task.status]} size="sm" dot>{TASK_STATUS_LABELS[task.status]}</Badge>
                       </div>
                     ))
                   )}
@@ -188,8 +189,8 @@ export function TargetPage() {
             </div>
           ))}
           {projectColumns.length === 0 && (
-            <Card className="py-12 text-center w-full">
-              <p className="text-[var(--color-text-secondary)]">Hali loyiha yo'q</p>
+            <Card className="w-full">
+              <EmptyState icon={Target} title="Hali loyiha yo'q" description="Loyiha yaratilgach, uning target tasklari shu yerda ko'rinadi." />
             </Card>
           )}
         </div>

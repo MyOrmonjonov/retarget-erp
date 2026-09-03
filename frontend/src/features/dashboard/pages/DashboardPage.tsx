@@ -7,6 +7,8 @@ import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Progress } from '@/shared/ui/progress';
 import { CircularProgress } from '@/shared/components/CircularProgress';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { FolderKanban, Trophy, Users } from 'lucide-react';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useDashboardStats, useProjectStatus, useTopEmployee, useTeamLoad, useMotivationScore } from '../hooks/useDashboard';
 import { PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS, type ProjectStatus } from '@/shared/types';
@@ -134,14 +136,7 @@ export function DashboardPage() {
                         {project.client} &middot; {project.type || "Xizmat turi kiritilmagan"}
                       </p>
                       <div className="mt-1">
-                        <Badge
-                          style={{ ...statusStyle[project.status], borderWidth: 1, borderStyle: 'solid' }}
-                          className="!font-extrabold gap-2"
-                        >
-                          <span
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: statusStyle[project.status].color }}
-                          />
+                        <Badge style={statusStyle[project.status]} dot>
                           {PROJECT_STATUS_LABELS[project.status]}
                         </Badge>
                       </div>
@@ -163,7 +158,7 @@ export function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="px-6 py-8 text-center text-[var(--color-text-muted)]">Loyiha topilmadi</div>
+              <EmptyState icon={FolderKanban} title="Loyiha topilmadi" description="Birinchi loyihani yaratgach shu yerda ko'rinadi." />
             )}
           </CardContent>
         </Card>
@@ -203,7 +198,7 @@ export function DashboardPage() {
                   </div>
                 </>
               ) : (
-                <div className="text-center text-[var(--color-text-muted)] py-4">Ma'lumot yo'q</div>
+                <EmptyState icon={Trophy} title="Ma'lumot yo'q" className="py-4" />
               )}
             </CardContent>
           </Card>
@@ -237,7 +232,7 @@ export function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-center text-[var(--color-text-muted)] py-4">Ma'lumot yo'q</div>
+                <EmptyState icon={Users} title="Ma'lumot yo'q" className="py-4" />
               )}
             </CardContent>
           </Card>

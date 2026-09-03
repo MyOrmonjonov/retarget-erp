@@ -9,7 +9,8 @@ import { Avatar } from '@/shared/ui/avatar';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { Plus, Search, Pencil } from 'lucide-react';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Plus, Search, Pencil, FolderKanban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Project, ProjectStatus } from '@/shared/types';
 import { PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS } from '@/shared/types';
@@ -243,8 +244,12 @@ export function ProjectsPage() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-[180px] rounded-[14px]" />)}
         </div>
       ) : filteredProjects.length === 0 ? (
-        <Card className="py-12 text-center">
-          <p className="text-[var(--color-text-secondary)]">Loyihalar topilmadi</p>
+        <Card>
+          <EmptyState
+            icon={FolderKanban}
+            title="Loyihalar topilmadi"
+            description="Qidiruv yoki filtrni o'zgartiring, yoki yangi loyiha yarating."
+          />
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

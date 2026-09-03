@@ -28,7 +28,11 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={cn(
-          'inline-flex items-center gap-1.5 font-medium rounded-full',
+          // Matches the reference CRM's StatusBadge/PriorityBadge: bold weight and a border
+          // in the same color as the text (at reduced opacity) - a soft-fill badge with no
+          // border reads flat; this border-current/25 is what makes every badge in the app
+          // (variant-based or a custom style="" override) look like a bold, defined signal.
+          'inline-flex items-center gap-1.5 font-bold rounded-full border border-current/25',
           variants[variant],
           sizes[size],
           className
@@ -36,16 +40,12 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
         {...props}
       >
         {dot && (
+          // bg-current means this works identically whether the badge got its color from a
+          // `variant` class or a custom `style={{ color: ... }}` override - no per-variant
+          // color lookup needed.
           <span
             className={cn(
-              'rounded-full',
-              variant === 'success' && 'bg-[var(--color-success)]',
-              variant === 'warning' && 'bg-[var(--color-warning)]',
-              variant === 'error' && 'bg-[var(--color-error)]',
-              variant === 'accent' && 'bg-[var(--color-accent)]',
-              variant === 'info' && 'bg-[var(--color-role-supervisor)]',
-              variant === 'default' && 'bg-[var(--color-text-muted)]',
-              variant === 'outline' && 'bg-[var(--color-text-muted)]',
+              'rounded-full bg-current flex-shrink-0',
               size === 'sm' && 'w-1.5 h-1.5',
               size === 'md' && 'w-2 h-2'
             )}

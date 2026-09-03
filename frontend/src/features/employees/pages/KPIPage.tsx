@@ -10,7 +10,8 @@ import { Input } from '@/shared/ui/input';
 import { Progress } from '@/shared/ui/progress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { StatCard } from '@/shared/components/StatCard';
-import { Settings, TrendingUp, TrendingDown } from 'lucide-react';
+import { EmptyState } from '@/shared/components/EmptyState';
+import { Settings, TrendingUp, TrendingDown, Users } from 'lucide-react';
 import { useEmployees } from '../hooks/useEmployees';
 import { kpiApi } from '../api/kpiApi';
 
@@ -90,7 +91,7 @@ export function KPIPage() {
           {isLoading ? (
             [...Array(4)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)
           ) : rows.length === 0 ? (
-            <p className="text-center text-[var(--color-text-secondary)] py-4">Xodimlar topilmadi</p>
+            <EmptyState icon={Users} title="Xodimlar topilmadi" className="py-4" />
           ) : (
             rows.map((row) => (
               <div key={row.id} className="flex items-center gap-4">

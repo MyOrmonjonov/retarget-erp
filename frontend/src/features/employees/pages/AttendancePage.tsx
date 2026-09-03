@@ -8,8 +8,9 @@ import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { StatCard } from '@/shared/components/StatCard';
+import { EmptyState } from '@/shared/components/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/table';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import type { AttendanceStatus } from '@/shared/types';
@@ -144,8 +145,8 @@ export function AttendancePage() {
       </Card>
 
       {!isLoading && rows.length === 0 && (
-        <Card className="py-12 text-center">
-          <p className="text-[var(--color-text-secondary)]">Xodimlar topilmadi</p>
+        <Card>
+          <EmptyState icon={Users} title="Xodimlar topilmadi" />
         </Card>
       )}
     </div>
