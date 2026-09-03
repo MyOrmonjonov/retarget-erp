@@ -11,6 +11,7 @@ import type { TaskPriority, TaskStatus } from '@/shared/types';
 import type { TaskDetail, TaskInput } from '../api/tasksApi';
 import type { Group } from '@/features/groups/api/groupsApi';
 import { useGroupTopics } from '@/features/groups/hooks/useGroups';
+import { CommentThread } from './CommentThread';
 
 export type TaskFormData = TaskInput;
 
@@ -431,6 +432,13 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
               <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={(e) => addFiles(e.target.files)} />
             </label>
           </div>
+
+          {isEdit && initialData && (
+            <div>
+              <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Izohlar</label>
+              <CommentThread taskId={initialData.id} />
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>
