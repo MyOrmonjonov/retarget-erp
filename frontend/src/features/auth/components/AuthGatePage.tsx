@@ -5,6 +5,7 @@ import { RotateCw, TriangleAlert } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { getTelegramInitData } from '@/shared/lib/telegram';
+import { LoadingScreen } from '@/shared/components/LoadingScreen';
 import { useAuthStore } from '../store/authStore';
 import { useAutoTelegramAuth } from '../hooks/useAuth';
 
@@ -18,6 +19,10 @@ export function AuthGatePage() {
   if (isAuthenticated && activeWorkspaceId != null) {
     const from = (location.state as { from?: string })?.from || '/dashboard';
     return <Navigate to={from} replace />;
+  }
+
+  if (initData && !auth.isError) {
+    return <LoadingScreen label="CRM yuklanmoqda..." />;
   }
 
   return (
@@ -38,7 +43,7 @@ export function AuthGatePage() {
             <CardTitle>Telegram orqali kirish</CardTitle>
             <CardDescription>
               {initData
-                ? 'Sessiya tekshirilmoqda...'
+                ? 'Kirishda xatolik yuz berdi'
                 : "Bu ilova faqat Telegram Mini App sifatida ochiladi"}
             </CardDescription>
           </CardHeader>
@@ -51,7 +56,7 @@ export function AuthGatePage() {
                   ochish qo'llab-quvvatlanmaydi.
                 </p>
               </div>
-            ) : auth.isError ? (
+            ) : (
               <>
                 <div className="flex items-start gap-3 rounded-[10px] bg-[var(--color-error-muted)] px-4 py-3">
                   <TriangleAlert className="h-5 w-5 shrink-0 text-[var(--color-error)]" />
@@ -64,10 +69,6 @@ export function AuthGatePage() {
                   Qayta urinish
                 </Button>
               </>
-            ) : (
-              <div className="flex items-center justify-center py-6">
-                <RotateCw className="h-6 w-6 animate-spin text-[var(--color-accent)]" />
-              </div>
             )}
           </CardContent>
         </Card>

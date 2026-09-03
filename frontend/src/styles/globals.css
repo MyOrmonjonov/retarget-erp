@@ -208,6 +208,34 @@
       box-shadow: 0 0 20px 4px var(--color-accent-muted);
     }
   }
+
+  /* LoadingScreen animations - ported from the reference CRM's boot loader */
+  .animate-loader-drift {
+    animation: loaderDrift 10s ease-in-out infinite alternate;
+  }
+
+  @keyframes loaderDrift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(2%, -2%, 0) scale(1.04); }
+  }
+
+  .animate-loader-float {
+    animation: loaderFloat 3.2s ease-in-out infinite;
+  }
+
+  @keyframes loaderFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .animate-loader-pulse {
+    animation: loaderPulse 1.9s ease-in-out infinite;
+  }
+
+  @keyframes loaderPulse {
+    0%, 100% { opacity: 0.6; transform: scale(0.94); }
+    50% { opacity: 1; transform: scale(1.04); }
+  }
 }
 
 /* Typography Classes */
