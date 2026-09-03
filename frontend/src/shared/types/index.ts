@@ -46,12 +46,12 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 /** Inline badge style per role (roles need arbitrary brand colors outside Badge's fixed variant set) */
 export const ROLE_BADGE_STYLE: Record<UserRole, { backgroundColor: string; color: string }> = {
-  CEO: { backgroundColor: '#2563EB1F', color: '#2563EB' },
-  MENEJER: { backgroundColor: '#16A34A1F', color: '#16A34A' },
-  BOSHQARUVCHI: { backgroundColor: '#0891B21F', color: '#0891B2' },
-  MONTAJOR: { backgroundColor: '#D977061F', color: '#D97706' },
-  HODIM: { backgroundColor: '#7C3AED1F', color: '#7C3AED' },
-  OPERATOR: { backgroundColor: '#DC26261F', color: '#DC2626' },
+  CEO: { backgroundColor: '#E8F0FE', color: '#0071E3' },
+  MENEJER: { backgroundColor: '#E8FBED', color: '#34C759' },
+  BOSHQARUVCHI: { backgroundColor: '#EDF8FF', color: '#5AC8FA' },
+  MONTAJOR: { backgroundColor: '#FFF4E5', color: '#FF9F0A' },
+  HODIM: { backgroundColor: '#F5EEFF', color: '#AF52DE' },
+  OPERATOR: { backgroundColor: '#EEEEFE', color: '#5856D6' },
 };
 
 /** Auth */

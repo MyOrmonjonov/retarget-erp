@@ -11,11 +11,11 @@ import { useDashboardStats, useProjectStatus, useTopEmployee, useTeamLoad, useMo
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/shared/types';
 
 const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: string }> = {
-  ACTIVE: { backgroundColor: '#2563EB1F', color: '#2563EB' },
-  PLANNING: { backgroundColor: '#6B72801F', color: '#6B7280' },
-  ON_HOLD: { backgroundColor: '#D977061F', color: '#D97706' },
-  COMPLETED: { backgroundColor: '#16A34A1F', color: '#16A34A' },
-  CANCELLED: { backgroundColor: '#DC26261F', color: '#DC2626' },
+  ACTIVE: { backgroundColor: '#E8F0FE', color: '#0071E3' },
+  PLANNING: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
+  ON_HOLD: { backgroundColor: '#FFF4E5', color: '#FF9F0A' },
+  COMPLETED: { backgroundColor: '#E8FBED', color: '#34C759' },
+  CANCELLED: { backgroundColor: '#FFF0EF', color: '#FF3B30' },
 };
 
 const MOTIVATION_STAGES = ['Past', 'Zaif', 'Nazorat', 'Yaxshi', "A'lo"];
