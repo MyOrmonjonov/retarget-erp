@@ -7,6 +7,7 @@ import uz.taskapp.employee.OrgRole;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public record EmployeeResponse(
         Long id,
@@ -31,11 +32,12 @@ public record EmployeeResponse(
         BigDecimal baseSalary,
         int kpiBase,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        List<String> projectNames
 ) {
     public static EmployeeResponse from(EmployeeProfileEntity profile, String fullName, String avatar,
                                          Integer kpiScore, long projectCount, long taskCount, long activeTasks,
-                                         long completedTasks, long overdueTasks) {
+                                         long completedTasks, long overdueTasks, List<String> projectNames) {
         // Ported from the reference CRM's Team page: workload = clamp(active*18 + projects*10, 0, 100) -
         // a fixed-weight formula, distinct from Dashboard's team-load which normalizes against the team's
         // own max instead of fixed weights.
@@ -63,7 +65,8 @@ public record EmployeeResponse(
                 profile.getBaseSalary(),
                 profile.getKpiBase(),
                 profile.getCreatedAt(),
-                profile.getUpdatedAt()
+                profile.getUpdatedAt(),
+                projectNames
         );
     }
 }

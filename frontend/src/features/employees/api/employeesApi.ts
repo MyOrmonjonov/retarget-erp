@@ -16,6 +16,7 @@ interface EmployeeDto {
   hireDate: string | null;
   kpiScore: number | null;
   projectCount: number;
+  projectNames: string[];
   taskCount: number;
   activeTasks: number;
   completedTasks: number;
@@ -54,6 +55,7 @@ function toEmployee(dto: EmployeeDto): Employee & { userId: string } {
     hireDate: dto.hireDate ?? '',
     kpiScore: dto.kpiScore ?? 0,
     projectCount: dto.projectCount,
+    projectNames: dto.projectNames,
     taskCount: dto.taskCount,
     activeTasks: dto.activeTasks,
     completedTasks: dto.completedTasks,

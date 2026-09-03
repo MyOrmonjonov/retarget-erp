@@ -8,6 +8,8 @@ import uz.taskapp.employee.dto.CreateEmployeeRequest;
 import uz.taskapp.employee.dto.EmployeeResponse;
 import uz.taskapp.employee.dto.UpdateEmployeeRequest;
 import uz.taskapp.kpi.KpiRecordRepository;
+import uz.taskapp.project.ProjectEntity;
+import uz.taskapp.project.ProjectMemberRepository;
 import uz.taskapp.project.ProjectRepository;
 import uz.taskapp.task.TaskAssigneeRepository;
 import uz.taskapp.task.TaskEntity;
@@ -30,11 +32,12 @@ public class EmployeeService {
     private final TaskAssigneeRepository taskAssigneeRepository;
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     public EmployeeService(EmployeeProfileRepository employeeRepository, WorkspaceMemberRepository memberRepository,
                             UserRepository userRepository, KpiRecordRepository kpiRepository,
                             TaskAssigneeRepository taskAssigneeRepository, TaskRepository taskRepository,
-                            ProjectRepository projectRepository) {
+                            ProjectRepository projectRepository, ProjectMemberRepository projectMemberRepository) {
         this.employeeRepository = employeeRepository;
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
@@ -42,6 +45,7 @@ public class EmployeeService {
         this.taskAssigneeRepository = taskAssigneeRepository;
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
+        this.projectMemberRepository = projectMemberRepository;
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +126,16 @@ public class EmployeeService {
                 .orElse(null);
 
         long projectCount = projectRepository.countByWorkspaceIdAndManagerId(workspaceId, profile.getUserId());
+        List<ProjectEntity> workspaceProjects = projectRepository.findAllByWorkspaceId(workspaceId);
+        java.util.Set<Long> memberProjectIds = projectMemberRepository
+                .findAllByIdProjectIdIn(workspaceProjects.stream().map(ProjectEntity::getId).toList()).stream()
+                .filter(m -> m.getUserId().equals(profile.getUserId()))
+                .map(m -> m.getProjectId())
+                .collect(java.util.stream.Collectors.toSet());
+        List<String> projectNames = workspaceProjects.stream()
+                .filter(p -> p.getManagerId().equals(profile.getUserId()) || memberProjectIds.contains(p.getId()))
+                .map(ProjectEntity::getName)
+                .toList();
 
         List<Long> taskIds = taskAssigneeRepository.findAllByIdUserId(profile.getUserId()).stream()
                 .map(a -> a.getTaskId())
@@ -141,7 +155,7 @@ public class EmployeeService {
                 .count();
 
         return EmployeeResponse.from(profile, fullName, avatar, kpiScore, projectCount, taskCount, activeTasks,
-                completedTasks, overdueTasks);
+                completedTasks, overdueTasks, projectNames);
     }
 
     private String displayName(UserEntity user) {

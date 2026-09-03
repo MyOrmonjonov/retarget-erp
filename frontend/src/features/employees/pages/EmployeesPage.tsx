@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/shared/ui/card';
@@ -18,6 +18,31 @@ import { employeesApi } from '../api/employeesApi';
 import { useUser } from '@/features/auth/store/authStore';
 
 type EmployeeWithUserId = Employee & { userId: string };
+
+const DEPARTMENT_DOT_COLORS = [
+  'bg-[var(--color-accent)]', 'bg-[var(--color-role-supervisor)]', 'bg-[var(--color-warning)]',
+  'bg-[var(--color-success)]', 'bg-[var(--color-error)]', 'bg-[var(--color-text-muted)]',
+];
+
+/** Groups employees under their free-text `department` field, matching the reference CRM's
+ * Team page - a colored dot per department (cycling a fixed palette by first-seen order). */
+function groupByDepartment(employees: EmployeeWithUserId[]) {
+  const order: string[] = [];
+  const groups = new Map<string, EmployeeWithUserId[]>();
+  for (const emp of employees) {
+    const dept = emp.department || "Bo'lim ko'rsatilmagan";
+    if (!groups.has(dept)) {
+      groups.set(dept, []);
+      order.push(dept);
+    }
+    groups.get(dept)!.push(emp);
+  }
+  return order.map((dept, index) => ({
+    department: dept,
+    color: DEPARTMENT_DOT_COLORS[index % DEPARTMENT_DOT_COLORS.length],
+    employees: groups.get(dept)!,
+  }));
+}
 
 function workloadVariant(pct: number): 'success' | 'warning' | 'error' {
   if (pct >= 75) return 'error';
@@ -142,6 +167,8 @@ export function EmployeesPage() {
     handleCloseDelete();
   }, [deletingEmployee, deleteEmployee, handleCloseDelete]);
 
+  const departmentGroups = useMemo(() => groupByDepartment(employees as EmployeeWithUserId[]), [employees]);
+
   return (
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-end">
@@ -166,63 +193,83 @@ export function EmployeesPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(employees as EmployeeWithUserId[]).map((emp) => (
-            <Card key={emp.id} className="p-5 relative group">
-              <div className="absolute top-3 right-3 hidden group-hover:flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditForm(emp)} aria-label="Tahrirlash">
-                  <Edit className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenDelete(emp)} aria-label="O'chirish">
-                  <Trash2 className="h-3.5 w-3.5 text-[var(--color-error)]" />
-                </Button>
+        <div className="space-y-8">
+          {departmentGroups.map((group) => (
+            <div key={group.department}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`w-2.5 h-2.5 rounded-full ${group.color}`} />
+                <h3 className="text-body font-semibold text-[var(--color-text-primary)]">{group.department}</h3>
+                <span className="text-caption text-[var(--color-text-muted)]">({group.employees.length})</span>
               </div>
-              <div className="flex items-center gap-3 mb-3">
-                <Avatar name={emp.fullName} src={emp.avatar} size="lg" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[var(--color-text-primary)] truncate">{emp.fullName}</p>
-                  <p className="text-caption text-[var(--color-text-secondary)] truncate">
-                    {emp.position || 'Lavozim ko\'rsatilmagan'} · {emp.department || 'Bo\'lim ko\'rsatilmagan'}
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.employees.map((emp) => (
+                  <Card key={emp.id} className="p-5 relative group">
+                    <div className="absolute top-3 right-3 hidden group-hover:flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditForm(emp)} aria-label="Tahrirlash">
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenDelete(emp)} aria-label="O'chirish">
+                        <Trash2 className="h-3.5 w-3.5 text-[var(--color-error)]" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar name={emp.fullName} src={emp.avatar} size="lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[var(--color-text-primary)] truncate">{emp.fullName}</p>
+                        <p className="text-caption text-[var(--color-text-secondary)] truncate">
+                          {emp.position || 'Lavozim ko\'rsatilmagan'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge style={ROLE_BADGE_STYLE[emp.role]} size="sm">
+                        {ROLE_LABELS[emp.role]}
+                      </Badge>
+                      <Badge variant={workloadVariant(emp.workload)} size="sm">
+                        Yuklanish: {emp.workload}%
+                      </Badge>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-caption text-[var(--color-text-secondary)] mb-1.5">
+                        KPI: <span className="text-[var(--color-text-primary)] font-medium">{emp.kpiScore}%</span>
+                      </p>
+                      {emp.projectNames.length === 0 ? (
+                        <p className="text-caption text-[var(--color-text-muted)]">Loyihalar yo'q</p>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {emp.projectNames.slice(0, 3).map((name) => (
+                            <Badge key={name} variant="outline" size="sm">{name}</Badge>
+                          ))}
+                          {emp.projectNames.length > 3 && (
+                            <span className="text-caption text-[var(--color-text-muted)]">+{emp.projectNames.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {isCeo && (
+                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--color-bg-border)]">
+                        <div>
+                          <p className="text-caption text-[var(--color-text-muted)] mb-1">Maosh</p>
+                          <InlineNumberField
+                            value={emp.baseSalary}
+                            onSave={(next) => salaryMutation.mutate({ id: String(emp.id), baseSalary: next })}
+                            suffix="so'm"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-caption text-[var(--color-text-muted)] mb-1">KPI bazasi</p>
+                          <InlineNumberField
+                            value={emp.kpiBase}
+                            onSave={(next) => kpiBaseMutation.mutate({ id: String(emp.id), kpiBase: next })}
+                            suffix="%"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ))}
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge style={ROLE_BADGE_STYLE[emp.role]} size="sm">
-                  {ROLE_LABELS[emp.role]}
-                </Badge>
-                <Badge variant={workloadVariant(emp.workload)} size="sm">
-                  Yuklanish: {emp.workload}%
-                </Badge>
-              </div>
-              <div className="flex items-center gap-5 mt-4">
-                <span className="text-caption text-[var(--color-text-secondary)]">
-                  KPI: <span className="text-[var(--color-text-primary)] font-medium">{emp.kpiScore}%</span>
-                </span>
-                <span className="text-caption text-[var(--color-text-secondary)]">
-                  Loyihalar: <span className="text-[var(--color-text-primary)] font-medium">{emp.projectCount}</span>
-                </span>
-              </div>
-              {isCeo && (
-                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--color-bg-border)]">
-                  <div>
-                    <p className="text-caption text-[var(--color-text-muted)] mb-1">Maosh</p>
-                    <InlineNumberField
-                      value={emp.baseSalary}
-                      onSave={(next) => salaryMutation.mutate({ id: String(emp.id), baseSalary: next })}
-                      suffix="so'm"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-caption text-[var(--color-text-muted)] mb-1">KPI bazasi</p>
-                    <InlineNumberField
-                      value={emp.kpiBase}
-                      onSave={(next) => kpiBaseMutation.mutate({ id: String(emp.id), kpiBase: next })}
-                      suffix="%"
-                    />
-                  </div>
-                </div>
-              )}
-            </Card>
+            </div>
           ))}
         </div>
       )}

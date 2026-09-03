@@ -224,6 +224,7 @@ export interface Employee extends BaseEntity {
   hireDate: string;
   kpiScore: number; // 0-100
   projectCount: number;
+  projectNames: string[];
   taskCount: number;
   activeTasks: number;
   completedTasks: number;
