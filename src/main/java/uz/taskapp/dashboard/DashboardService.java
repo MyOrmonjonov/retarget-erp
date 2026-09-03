@@ -9,6 +9,7 @@ import uz.taskapp.employee.EmployeeProfileEntity;
 import uz.taskapp.employee.EmployeeProfileRepository;
 import uz.taskapp.kpi.KpiRecordRepository;
 import uz.taskapp.project.ProjectEntity;
+import uz.taskapp.project.ProjectProgressCalculator;
 import uz.taskapp.project.ProjectRepository;
 import uz.taskapp.project.ProjectStatus;
 import uz.taskapp.user.UserEntity;
@@ -33,16 +34,19 @@ public class DashboardService {
     private final KpiRecordRepository kpiRepository;
     private final UserRepository userRepository;
     private final WorkspaceMemberRepository memberRepository;
+    private final ProjectProgressCalculator progressCalculator;
 
     public DashboardService(JdbcTemplate jdbcTemplate, ProjectRepository projectRepository,
                              EmployeeProfileRepository employeeRepository, KpiRecordRepository kpiRepository,
-                             UserRepository userRepository, WorkspaceMemberRepository memberRepository) {
+                             UserRepository userRepository, WorkspaceMemberRepository memberRepository,
+                             ProjectProgressCalculator progressCalculator) {
         this.jdbcTemplate = jdbcTemplate;
         this.projectRepository = projectRepository;
         this.employeeRepository = employeeRepository;
         this.kpiRepository = kpiRepository;
         this.userRepository = userRepository;
         this.memberRepository = memberRepository;
+        this.progressCalculator = progressCalculator;
     }
 
     @Transactional(readOnly = true)
@@ -96,13 +100,18 @@ public class DashboardService {
 
         List<TeamLoadDto> teamLoad = buildTeamLoad(workspaceId, employees);
 
-        List<ProjectStatusDto> projectStatus = projects.stream()
+        List<ProjectEntity> recentProjects = projects.stream()
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
                 .limit(6)
+                .toList();
+        Map<Long, Integer> progressByProject = progressCalculator.computeProgress(
+                recentProjects.stream().map(ProjectEntity::getId).toList());
+        List<ProjectStatusDto> projectStatus = recentProjects.stream()
                 .map(p -> {
                     UserEntity manager = p.getManagerId() == null ? null
                             : usersById.computeIfAbsent(p.getManagerId(), id -> userRepository.findById(id).orElse(null));
-                    return new ProjectStatusDto(p.getId(), p.getName(), p.getClientName(), p.getStatus().name(), p.getProgress(),
+                    return new ProjectStatusDto(p.getId(), p.getName(), p.getClientName(), p.getStatus().name(),
+                            progressByProject.getOrDefault(p.getId(), 0),
                             manager == null ? null : displayName(manager), manager == null ? null : manager.getPhotoUrl());
                 })
                 .toList();
