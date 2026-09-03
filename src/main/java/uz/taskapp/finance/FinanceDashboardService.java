@@ -7,11 +7,13 @@ import org.springframework.transaction.annotation.Transactional;
 import uz.taskapp.common.ApiException;
 import uz.taskapp.employee.EmployeeProfileEntity;
 import uz.taskapp.employee.EmployeeProfileRepository;
+import uz.taskapp.employee.OrgRole;
 import uz.taskapp.project.ProjectEntity;
 import uz.taskapp.project.ProjectRepository;
 import uz.taskapp.project.ProjectStatus;
 import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
+import uz.taskapp.workspace.WorkspaceMemberEntity;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
 
 import java.math.BigDecimal;
@@ -25,9 +27,9 @@ import java.util.List;
 
 /**
  * Internal profit/salary view, ported from a reference CRM the user pointed at (see project memory) -
- * distinct from {@link InvoiceService}/{@link ExpenseService}, which are client-facing billing. Nothing
- * here has a server-side role check yet, matching the rest of this codebase (role gating happens on the
- * frontend) - do not treat that as settled; it's a pre-existing gap, not something introduced here.
+ * distinct from {@link InvoiceService}/{@link ExpenseService}, which are client-facing billing. Salary
+ * and profit figures are sensitive, so access is restricted to the workspace OWNER plus CEO/MENEJER
+ * org roles, mirroring the frontend's own /finance route gate.
  */
 @Service
 public class FinanceDashboardService {
@@ -53,7 +55,7 @@ public class FinanceDashboardService {
 
     @Transactional(readOnly = true)
     public FinanceDashboardResponse compute(Long currentUserId, Long workspaceId, YearMonth month) {
-        requireMembership(workspaceId, currentUserId);
+        requireFinanceAccess(workspaceId, currentUserId);
         YearMonth targetMonth = month == null ? YearMonth.now() : month;
         LocalDate monthStart = targetMonth.atDay(1);
         LocalDate monthEndExclusive = targetMonth.plusMonths(1).atDay(1);
@@ -121,9 +123,20 @@ public class FinanceDashboardService {
         return value == null ? 0 : value;
     }
 
-    private void requireMembership(Long workspaceId, Long userId) {
-        if (!memberRepository.existsByWorkspaceIdAndUserIdAndActiveTrueAndTemporarilyBlockedFalse(workspaceId, userId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED", "Ish maydoniga kirishga ruxsat yo'q");
+    private void requireFinanceAccess(Long workspaceId, Long userId) {
+        WorkspaceMemberEntity membership = memberRepository
+                .findByWorkspaceIdAndUserIdAndActiveTrueAndTemporarilyBlockedFalse(workspaceId, userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED",
+                        "Ish maydoniga kirishga ruxsat yo'q"));
+        if ("OWNER".equals(membership.getRoleCode())) {
+            return;
+        }
+        OrgRole orgRole = employeeRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+                .map(EmployeeProfileEntity::getOrgRole)
+                .orElse(null);
+        if (orgRole != OrgRole.CEO && orgRole != OrgRole.MENEJER) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "FINANCE_ACCESS_DENIED",
+                    "Moliyaviy ma'lumotlarni ko'rish uchun ruxsat yo'q");
         }
     }
 
