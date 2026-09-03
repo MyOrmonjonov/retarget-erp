@@ -43,8 +43,14 @@ export function Sidebar() {
           )}
         >
           {!isSidebarCollapsed && (
-            <Link to="/dashboard" aria-label="Retarget ERP - Bosh sahifa">
-              <span className="text-[16px] font-bold text-[var(--color-text-primary)]">Retarget ERP</span>
+            <Link to="/dashboard" aria-label="Retarget ERP - Bosh sahifa" className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[10px] bg-[var(--color-accent)] text-[11px] font-black text-white">
+                CRM
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[14px] font-extrabold text-[var(--color-text-primary)] truncate">Retarget ERP</span>
+                <span className="block text-[11px] text-[var(--color-text-muted)] truncate">Boshqaruv tizimi</span>
+              </span>
             </Link>
           )}
           {isSidebarCollapsed && (
@@ -85,7 +91,7 @@ export function Sidebar() {
             {navItems.map((section) => (
               <div key={section.label} className="mb-6">
                 {!isSidebarCollapsed && (
-                  <h4 className="px-3 py-1.5 text-[10px] font-normal text-[var(--color-text-muted)] uppercase tracking-wider">
+                  <h4 className="px-3 py-1.5 text-[10.5px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                     {section.label}
                   </h4>
                 )}
@@ -99,24 +105,28 @@ export function Sidebar() {
                           cn(
                             isSidebarCollapsed
                               ? 'group flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-150 active:scale-95'
-                              : 'flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors',
+                              : 'group flex items-center gap-2.5 px-3 py-[9px] rounded-[10px] transition-colors',
                             isActive
                               ? isSidebarCollapsed
                                 ? 'bg-[var(--color-accent)] text-white shadow-[0_2px_10px_-2px_rgba(37,99,235,0.4)]'
-                                : 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
+                                : 'bg-[var(--color-accent)] text-white'
                               : cn(
                                   'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
-                                  isSidebarCollapsed ? 'hover:bg-[var(--color-bg-hover)]' : 'hover:bg-[var(--color-bg-hover)]'
+                                  'hover:bg-[var(--color-bg-hover)]'
                                 )
                           )
                         }
                         aria-current="page"
                         onClick={() => setIsMobileOpen(false)}
                       >
-                        {isSidebarCollapsed && (
-                          <item.icon className="h-[19px] w-[19px] flex-shrink-0 transition-transform duration-150 group-hover:scale-110" aria-hidden="true" />
-                        )}
-                        {!isSidebarCollapsed && <span className="text-[14px] font-normal truncate">{item.label}</span>}
+                        <item.icon
+                          className={cn(
+                            'flex-shrink-0 transition-transform duration-150',
+                            isSidebarCollapsed ? 'h-[19px] w-[19px] group-hover:scale-110' : 'h-[17px] w-[17px]'
+                          )}
+                          aria-hidden="true"
+                        />
+                        {!isSidebarCollapsed && <span className="text-[13.5px] font-semibold truncate">{item.label}</span>}
                         {item.badge && !isSidebarCollapsed && (
                           <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[var(--color-error)] text-white">
                             {item.badge > 99 ? '99+' : item.badge}
