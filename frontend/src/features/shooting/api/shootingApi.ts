@@ -5,6 +5,7 @@ import type { ShootingEvent, ShootingEventStatus, ShootingEventType } from '@/sh
 interface ShootingEventDto {
   id: number;
   workspaceId: number;
+  projectId: number | null;
   title: string;
   date: string;
   startTime: string;
@@ -21,6 +22,7 @@ interface ShootingEventDto {
 function toEvent(dto: ShootingEventDto): ShootingEvent {
   return {
     id: String(dto.id),
+    projectId: dto.projectId != null ? String(dto.projectId) : undefined,
     title: dto.title,
     date: dto.date,
     startTime: dto.startTime,
@@ -36,6 +38,7 @@ function toEvent(dto: ShootingEventDto): ShootingEvent {
 }
 
 export interface ShootingEventInput {
+  projectId?: string;
   title: string;
   date: string;
   startTime: string;
@@ -52,6 +55,11 @@ function currentWorkspaceId(): number {
   return activeWorkspaceId;
 }
 
+function toPayload(input: ShootingEventInput) {
+  const { projectId, ...rest } = input;
+  return { ...rest, projectId: projectId ? Number(projectId) : undefined };
+}
+
 export const shootingApi = {
   list: async (): Promise<ShootingEvent[]> => {
     const response = await api.get<ShootingEventDto[]>('/shooting-events');
@@ -61,18 +69,22 @@ export const shootingApi = {
   create: async (input: ShootingEventInput): Promise<ShootingEvent> => {
     const response = await api.post<ShootingEventDto>('/shooting-events', {
       workspaceId: currentWorkspaceId(),
-      ...input,
+      ...toPayload(input),
     });
     return toEvent(response.data);
   },
 
   update: async (id: string, input: ShootingEventInput): Promise<ShootingEvent> => {
-    const response = await api.put<ShootingEventDto>(`/shooting-events/${id}`, input);
+    const response = await api.put<ShootingEventDto>(`/shooting-events/${id}`, toPayload(input));
     return toEvent(response.data);
   },
 
   changeStatus: async (id: string, status: ShootingEventStatus): Promise<ShootingEvent> => {
     const response = await api.patch<ShootingEventDto>(`/shooting-events/${id}/status`, { status });
     return toEvent(response.data);
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/shooting-events/${id}`);
   },
 };

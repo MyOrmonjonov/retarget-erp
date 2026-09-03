@@ -9,6 +9,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 public record UpdateShootingEventRequest(
+        Long projectId,
         @NotBlank String title,
         @NotNull LocalDate date,
         @NotNull LocalTime startTime,

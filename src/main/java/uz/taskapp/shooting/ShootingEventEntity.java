@@ -23,6 +23,9 @@ public class ShootingEventEntity {
     @Column(name = "workspace_id", nullable = false)
     private Long workspaceId;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
     @Column(nullable = false, length = 300)
     private String title;
 
@@ -90,8 +93,14 @@ public class ShootingEventEntity {
         this.updatedAt = Instant.now();
     }
 
+    public void linkProject(Long projectId) {
+        this.projectId = projectId;
+        this.updatedAt = Instant.now();
+    }
+
     public Long getId() { return id; }
     public Long getWorkspaceId() { return workspaceId; }
+    public Long getProjectId() { return projectId; }
     public String getTitle() { return title; }
     public LocalDate getDate() { return date; }
     public LocalTime getStartTime() { return startTime; }

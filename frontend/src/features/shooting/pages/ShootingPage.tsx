@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { Card, CardContent } from '@/shared/ui/card';
+import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { Select } from '@/shared/ui/select';
+import { Select, type SelectOption } from '@/shared/ui/select';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { cn } from '@/shared/lib/utils';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
-import { uz } from 'date-fns/locale';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 import type { ShootingEvent, ShootingEventStatus, ShootingEventType } from '@/shared/types';
-import { useShootingEvents, useCreateShootingEvent, useUpdateShootingEvent } from '../hooks/useShootingEvents';
+import {
+  useShootingEvents, useCreateShootingEvent, useUpdateShootingEvent, useDeleteShootingEvent,
+} from '../hooks/useShootingEvents';
 import { shootingApi } from '../api/shootingApi';
+import { useProjects } from '@/features/projects/hooks/useProjects';
 
 const statusBadgeVariant: Record<ShootingEventStatus, 'default' | 'warning' | 'success' | 'error'> = {
   PLANNING: 'default',
@@ -32,31 +34,41 @@ const statusLabels: Record<ShootingEventStatus, string> = {
   CANCELLED: 'Bekor qilingan',
 };
 
-const weekdayLabels = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak'];
-
 export function ShootingPage() {
   const { data: events = [], isLoading } = useShootingEvents();
+  const { data: projects = [] } = useProjects();
   const createEvent = useCreateShootingEvent();
   const updateEvent = useUpdateShootingEvent();
+  const deleteEvent = useDeleteShootingEvent();
 
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ShootingEvent | null>(null);
+  const [createForProjectId, setCreateForProjectId] = useState<string | undefined>();
+  const [deletingEvent, setDeletingEvent] = useState<ShootingEvent | null>(null);
 
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  // Ported from the reference CRM's Syomka kalendari: one column per project (biriktirilgan
+  // loyihalar), not a week/day view - a project's shooting schedule lives on its own column.
+  const projectColumns = useMemo(() => {
+    const byProject = new Map<string, { projectId: string; name: string; events: ShootingEvent[] }>();
+    for (const project of projects) {
+      byProject.set(String(project.id), { projectId: String(project.id), name: project.name, events: [] });
+    }
+    for (const event of events) {
+      if (!event.projectId || !byProject.has(event.projectId)) continue;
+      byProject.get(event.projectId)!.events.push(event);
+    }
+    byProject.forEach((col) => col.events.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)));
+    return Array.from(byProject.values());
+  }, [projects, events]);
 
-  const dayEvents = useMemo(() => {
-    return events
-      .filter((e) => isSameDay(new Date(e.date), selectedDate))
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  }, [events, selectedDate]);
+  const projectOptions: SelectOption[] = useMemo(
+    () => projects.map((p) => ({ value: String(p.id), label: p.name })),
+    [projects]
+  );
 
-  const handlePrevWeek = useCallback(() => setWeekStart((d) => addDays(d, -7)), []);
-  const handleNextWeek = useCallback(() => setWeekStart((d) => addDays(d, 7)), []);
-
-  const handleOpenCreateForm = useCallback(() => {
+  const handleOpenCreateForm = useCallback((projectId?: string) => {
     setEditingEvent(null);
+    setCreateForProjectId(projectId);
     setIsFormOpen(true);
   }, []);
 
@@ -68,10 +80,12 @@ export function ShootingPage() {
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
     setEditingEvent(null);
+    setCreateForProjectId(undefined);
   }, []);
 
   const handleFormSubmit = useCallback(async (data: ShootingEventFormData) => {
     const input = {
+      projectId: data.projectId || createForProjectId,
       title: data.title,
       date: data.date,
       startTime: data.startTime,
@@ -89,102 +103,106 @@ export function ShootingPage() {
       await createEvent.mutateAsync(input);
     }
     handleCloseForm();
-  }, [editingEvent, createEvent, updateEvent, handleCloseForm]);
+  }, [editingEvent, createEvent, updateEvent, createForProjectId, handleCloseForm]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingEvent) return;
+    await deleteEvent.mutateAsync(String(deletingEvent.id));
+    setDeletingEvent(null);
+  }, [deletingEvent, deleteEvent]);
 
   return (
     <div className="space-y-6 animate-in">
-      <div className="flex items-center justify-end flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-caption text-[var(--color-text-secondary)]">
-            <button type="button" onClick={handlePrevWeek} aria-label="Oldingi hafta" className="hover:text-[var(--color-text-primary)]">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {format(weekStart, 'MMMM yyyy', { locale: uz })}
-            <button type="button" onClick={handleNextWeek} aria-label="Keyingi hafta" className="hover:text-[var(--color-text-primary)]">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <Button variant="primary" onClick={handleOpenCreateForm}>
-            <Plus className="h-4 w-4" />
-            Yangi syomka
-          </Button>
-        </div>
-      </div>
+      <p className="text-caption text-[var(--color-text-secondary)]">
+        Biriktirilgan loyihalar bo'yicha syomka jadvali
+      </p>
 
-      {/* Week strip */}
-      <div>
-        <div className="flex items-center gap-2">
-          {weekDays.map((day, i) => {
-            const isSelected = isSameDay(day, selectedDate);
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setSelectedDate(day)}
-                className={cn(
-                  'flex-1 flex flex-col items-start gap-1 rounded-lg px-4 py-2.5 transition-colors',
-                  isSelected
-                    ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
-                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
-                )}
-              >
-                <span className="text-caption">{weekdayLabels[i]}</span>
-                <span className="text-body font-semibold">{format(day, 'd')}</span>
-              </button>
-            );
-          })}
+      {isLoading ? (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-[320px] w-[280px] flex-shrink-0 rounded-[14px]" />
+          ))}
         </div>
-      </div>
-
-      {/* Selected day events */}
-      <div>
-        <h3 className="text-body font-semibold text-[var(--color-text-primary)] mb-3">
-          {format(selectedDate, 'EEEE, d-MMMM', { locale: uz })} syomkalari
-        </h3>
-        <div className="space-y-3">
-          {isLoading ? (
-            [...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
-          ) : dayEvents.length === 0 ? (
-            <Card className="py-10 text-center">
-              <p className="text-[var(--color-text-secondary)]">Bu kunga syomka rejalashtirilmagan</p>
-            </Card>
-          ) : (
-            dayEvents.map((event) => (
-              <Card key={event.id} className="cursor-pointer" onClick={() => handleOpenEditForm(event)}>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <span className="text-body font-semibold text-[var(--color-accent)] w-14 flex-shrink-0">
-                    {event.startTime}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[var(--color-text-primary)] truncate">{event.title}</p>
-                    <p className="text-caption text-[var(--color-text-muted)] truncate">{event.location}</p>
-                  </div>
-                  {event.team.length > 0 && (
-                    <div className="hidden sm:flex items-center gap-1">
-                      {event.team.slice(0, 3).map((memberId) => (
-                        <Avatar key={memberId} name={`#${memberId}`} size="sm" />
-                      ))}
-                      {event.team.length > 3 && (
-                        <span className="text-caption text-[var(--color-text-secondary)]">+{event.team.length - 3}</span>
-                      )}
-                    </div>
+      ) : projectColumns.length === 0 ? (
+        <Card className="py-12 text-center">
+          <p className="text-[var(--color-text-secondary)]">Hali loyiha yo'q</p>
+        </Card>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {projectColumns.map((col) => (
+            <div key={col.projectId} className="min-w-[280px] max-w-[280px] flex-shrink-0">
+              <Card className="p-3 h-full flex flex-col">
+                <div className="pb-3 mb-3 border-b border-[var(--color-bg-border)]">
+                  <p className="text-body font-semibold text-[var(--color-text-primary)] truncate">{col.name}</p>
+                  <p className="text-caption text-[var(--color-text-muted)]">{col.events.length} ta syomka</p>
+                </div>
+                <div className="flex-1 space-y-2 min-h-[60px]">
+                  {col.events.length === 0 ? (
+                    <p className="text-caption text-[var(--color-text-muted)] text-center py-6">Syomka yo'q</p>
+                  ) : (
+                    col.events.map((event) => (
+                      <div
+                        key={event.id}
+                        className="rounded-lg border border-[var(--color-bg-border)] bg-[var(--color-bg-surface)] p-2.5 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-caption font-medium text-[var(--color-text-primary)] truncate">{event.title}</p>
+                          <Badge variant={statusBadgeVariant[event.status]} size="sm">{statusLabels[event.status]}</Badge>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-text-muted)]">
+                          {event.date} &middot; {event.startTime}
+                        </p>
+                        {event.location && <p className="text-[11px] text-[var(--color-text-muted)]">{event.location}</p>}
+                        {event.team.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            {event.team.slice(0, 3).map((memberId) => (
+                              <Avatar key={memberId} name={`#${memberId}`} size="xs" />
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 pt-1">
+                          <button type="button" onClick={() => handleOpenEditForm(event)} className="text-[11px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] inline-flex items-center gap-1">
+                            <Pencil className="h-3 w-3" /> Tahrirlash
+                          </button>
+                          <button type="button" onClick={() => setDeletingEvent(event)} className="text-[11px] font-medium text-[var(--color-error)] inline-flex items-center gap-1">
+                            <Trash2 className="h-3 w-3" /> O'chirish
+                          </button>
+                        </div>
+                      </div>
+                    ))
                   )}
-                  <Badge variant={statusBadgeVariant[event.status]}>{statusLabels[event.status]}</Badge>
-                </CardContent>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenCreateForm(col.projectId)}
+                  className="mt-2 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-[var(--color-bg-border)] text-caption text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Syomka qo'shish
+                </button>
               </Card>
-            ))
-          )}
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Event Form Modal */}
       <EventForm
         isOpen={isFormOpen}
         onClose={handleCloseForm}
         onSubmit={handleFormSubmit}
         initialData={editingEvent}
-        defaultDate={selectedDate}
+        defaultProjectId={createForProjectId}
+        projectOptions={projectOptions}
         isLoading={createEvent.isPending || updateEvent.isPending}
+      />
+
+      <DeleteConfirmation
+        isOpen={!!deletingEvent}
+        onClose={() => setDeletingEvent(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteEvent.isPending}
+        title="Syomkani o'chirish"
+        description="Bu syomka doimiy o'chiriladi. Davom etishni xohlaysizmi?"
+        itemName={deletingEvent?.title}
       />
     </div>
   );
@@ -192,6 +210,7 @@ export function ShootingPage() {
 
 // Event Form Component
 interface ShootingEventFormData {
+  projectId: string;
   title: string;
   date: string;
   startTime: string;
@@ -217,12 +236,13 @@ const statusOptions = [
   { value: 'CANCELLED', label: 'Bekor qilingan' },
 ];
 
-function EventForm({ isOpen, onClose, onSubmit, initialData, defaultDate, isLoading }: {
+function EventForm({ isOpen, onClose, onSubmit, initialData, defaultProjectId, projectOptions, isLoading }: {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ShootingEventFormData) => void;
   initialData: ShootingEvent | null;
-  defaultDate: Date | null;
+  defaultProjectId?: string;
+  projectOptions: SelectOption[];
   isLoading?: boolean;
 }) {
   const isEdit = !!initialData;
@@ -250,6 +270,7 @@ function EventForm({ isOpen, onClose, onSubmit, initialData, defaultDate, isLoad
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
           onSubmit({
+            projectId: fd.get('projectId') as string,
             title: fd.get('title') as string,
             date: fd.get('date') as string,
             startTime: fd.get('startTime') as string,
@@ -260,9 +281,17 @@ function EventForm({ isOpen, onClose, onSubmit, initialData, defaultDate, isLoad
             description: fd.get('description') as string,
           });
         }} className="p-4 space-y-4">
-          <Input name="title" label="Loyiha" placeholder="Mas: Coffee Lab — Mahsulot foto" defaultValue={initialData?.title || ''} required />
+          {projectOptions.length > 0 && (
+            <Select
+              name="projectId"
+              label="Loyiha"
+              options={[{ value: '', label: "Loyiha tanlanmagan" }, ...projectOptions]}
+              defaultValue={initialData?.projectId ?? defaultProjectId ?? ''}
+            />
+          )}
+          <Input name="title" label="Sarlavha" placeholder="Mas: Mahsulot foto" defaultValue={initialData?.title || ''} required />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input name="date" type="date" label="Sana" defaultValue={initialData?.date || (defaultDate ? format(defaultDate, 'yyyy-MM-dd') : '')} required />
+            <Input name="date" type="date" label="Sana" defaultValue={initialData?.date || format(new Date(), 'yyyy-MM-dd')} required />
             <div className="grid grid-cols-2 gap-2">
               <Input name="startTime" type="time" label="Vaqt" defaultValue={initialData?.startTime || ''} required />
               <Input name="endTime" type="time" label="Tugash" defaultValue={initialData?.endTime || ''} required />

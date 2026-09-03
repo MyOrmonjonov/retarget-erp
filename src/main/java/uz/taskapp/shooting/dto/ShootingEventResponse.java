@@ -12,6 +12,7 @@ import java.util.List;
 public record ShootingEventResponse(
         Long id,
         Long workspaceId,
+        Long projectId,
         String title,
         LocalDate date,
         LocalTime startTime,
@@ -28,6 +29,7 @@ public record ShootingEventResponse(
         return new ShootingEventResponse(
                 event.getId(),
                 event.getWorkspaceId(),
+                event.getProjectId(),
                 event.getTitle(),
                 event.getDate(),
                 event.getStartTime(),

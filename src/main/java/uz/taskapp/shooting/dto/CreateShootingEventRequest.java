@@ -10,6 +10,7 @@ import java.util.List;
 
 public record CreateShootingEventRequest(
         @NotNull Long workspaceId,
+        Long projectId,
         @NotBlank String title,
         @NotNull LocalDate date,
         @NotNull LocalTime startTime,

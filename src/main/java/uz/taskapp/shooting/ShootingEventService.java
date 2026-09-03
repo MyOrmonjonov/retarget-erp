@@ -52,6 +52,7 @@ public class ShootingEventService {
         requireMembership(request.workspaceId(), currentUserId);
         ShootingEventEntity event = new ShootingEventEntity(request.workspaceId(), request.title(), request.date(),
                 request.startTime(), request.endTime(), request.location(), request.type(), request.description());
+        event.linkProject(request.projectId());
         event = eventRepository.save(event);
         saveTeam(event.getId(), request.team());
         return ShootingEventResponse.from(event, teamOf(event.getId()));
@@ -64,6 +65,7 @@ public class ShootingEventService {
         ShootingEventEntity event = findWithinWorkspace(eventId, workspaceId);
         event.update(request.title(), request.date(), request.startTime(), request.endTime(), request.location(),
                 request.type(), request.description());
+        event.linkProject(request.projectId());
         teamMemberRepository.deleteAllByIdEventId(event.getId());
         saveTeam(event.getId(), request.team());
         return ShootingEventResponse.from(event, teamOf(event.getId()));

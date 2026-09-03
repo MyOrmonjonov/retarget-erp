@@ -32,3 +32,15 @@ export function useUpdateShootingEvent() {
     onError: (error: { message?: string }) => toast.error(error.message || 'Syomkani yangilashda xatolik yuz berdi'),
   });
 }
+
+export function useDeleteShootingEvent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => shootingApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shooting-events'] });
+      toast.success("Syomka o'chirildi");
+    },
+    onError: (error: { message?: string }) => toast.error(error.message || "Syomkani o'chirishda xatolik yuz berdi"),
+  });
+}
