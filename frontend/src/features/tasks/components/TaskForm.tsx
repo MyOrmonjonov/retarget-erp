@@ -63,6 +63,9 @@ interface TaskFormProps {
   /** Dizayn bo'limi only - shows format/platform fields, ported from the reference CRM's
    * Design page (its task model has these; ours doesn't for tasks in general). */
   showDesignFields?: boolean;
+  /** Optional project picker - omitted entirely when not passed (e.g. from a project's own
+   * detail page, where the link is implied). */
+  projects?: SelectOption[];
 }
 
 const DESIGN_FORMAT_OPTIONS: SelectOption[] = [
@@ -122,11 +125,12 @@ function emptyForm(): TaskFormData {
     topicId: undefined,
     format: '',
     platform: '',
+    projectId: undefined,
   };
 }
 
 export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, assignees = [], groups = [],
-                          showDesignFields = false }: TaskFormProps) {
+                          showDesignFields = false, projects }: TaskFormProps) {
   const isEdit = !!initialData;
   const [form, setForm] = useState<TaskFormData>(emptyForm());
   const [checklistDraft, setChecklistDraft] = useState('');
@@ -154,6 +158,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
         topicId: initialData.topicId,
         format: initialData.tags?.[0] ?? '',
         platform: initialData.platform ?? '',
+        projectId: initialData.projectId || undefined,
       });
     } else {
       setForm(emptyForm());
@@ -267,6 +272,15 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
             placeholder="Vazifa haqida batafsil ma'lumot..."
             rows={3}
           />
+
+          {projects && projects.length > 0 && (
+            <Select
+              value={form.projectId ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value || undefined }))}
+              label="Loyihaga bog'lash (ixtiyoriy)"
+              options={[{ value: '', label: "Bog'lanmagan" }, ...projects]}
+            />
+          )}
 
           {linkedGroups.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

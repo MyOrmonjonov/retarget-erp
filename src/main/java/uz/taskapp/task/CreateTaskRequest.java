@@ -23,6 +23,7 @@ public record CreateTaskRequest(
         @Valid List<CreateChecklistItemRequest> checklist,
         Long voiceDraftId,
         String format,
-        String platform
+        String platform,
+        Long projectId
 ) {
 }

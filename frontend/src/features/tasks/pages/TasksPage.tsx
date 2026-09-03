@@ -17,6 +17,7 @@ import { tasksApi } from '../api/tasksApi';
 import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus, useDeleteTask } from '../hooks/useTasks';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
 import { useGroups } from '@/features/groups/hooks/useGroups';
+import { useProjects } from '@/features/projects/hooks/useProjects';
 import { useUser } from '@/features/auth/store/authStore';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 import { toast } from 'sonner';
@@ -108,6 +109,7 @@ export function TasksPage() {
   const { data: tasks = [], isLoading } = useTasks();
   const { data: employees = [] } = useEmployees();
   const { data: groups = [] } = useGroups();
+  const { data: projects = [] } = useProjects();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const changeStatus = useChangeTaskStatus();
@@ -116,6 +118,10 @@ export function TasksPage() {
   const assigneeOptions = useMemo(
     () => employees.map((e) => ({ value: e.userId, label: e.fullName })),
     [employees]
+  );
+  const projectOptions = useMemo(
+    () => projects.map((p) => ({ value: String(p.id), label: p.name })),
+    [projects]
   );
 
   // The task list endpoint never includes assignee names/avatars (only ids) - resolve them
@@ -301,6 +307,7 @@ export function TasksPage() {
         isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
         groups={groups}
+        projects={projectOptions}
       />
 
       {/* Delete Confirmation Modal */}

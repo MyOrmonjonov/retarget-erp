@@ -24,6 +24,7 @@ public record UpdateTaskRequest(
         Boolean reminderProvided,
         @Valid List<CreateChecklistItemRequest> checklist,
         String format,
-        String platform
+        String platform,
+        Long projectId
 ) {
 }

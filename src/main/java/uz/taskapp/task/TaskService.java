@@ -18,6 +18,7 @@ import uz.taskapp.group.GroupRepository;
 import uz.taskapp.group.GroupTopicEntity;
 import uz.taskapp.group.GroupTopicId;
 import uz.taskapp.group.GroupTopicRepository;
+import uz.taskapp.project.ProjectRepository;
 import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
@@ -63,6 +64,7 @@ public class TaskService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTopicRepository groupTopicRepository;
+    private final ProjectRepository projectRepository;
     private final JdbcTemplate jdbcTemplate;
     private final TelegramTaskNotificationService taskNotificationService;
     private final WorkspaceBroadcastService broadcastService;
@@ -78,6 +80,7 @@ public class TaskService {
                        GroupRepository groupRepository,
                        GroupMemberRepository groupMemberRepository,
                        GroupTopicRepository groupTopicRepository,
+                       ProjectRepository projectRepository,
                        AppProperties appProperties,
                        JdbcTemplate jdbcTemplate,
                        TelegramTaskNotificationService taskNotificationService,
@@ -91,6 +94,7 @@ public class TaskService {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupTopicRepository = groupTopicRepository;
+        this.projectRepository = projectRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.taskNotificationService = taskNotificationService;
         this.broadcastService = broadcastService;
@@ -150,6 +154,7 @@ public class TaskService {
                 visibility,
                 request.dueAt());
         newTask.updateDesignMeta(request.format(), request.platform());
+        newTask.linkProject(request.projectId());
         newTask.assignSequence(nextTaskSequence(request.workspaceId()));
         final TaskEntity task = taskRepository.save(newTask);
         assigneeRepository.saveAll(assigneeIds.stream()
@@ -338,6 +343,7 @@ public class TaskService {
         task.updateDetails(request.title(), request.description(), request.status(), request.priority(), request.dueAt(),
                 Boolean.TRUE.equals(request.dueAtProvided()));
         task.updateDesignMeta(request.format(), request.platform());
+        task.linkProject(request.projectId());
 
         if (request.visibility() != null) {
             Long requestedGroupId = request.visibility() == TaskVisibility.GROUP ? request.groupId() : null;
@@ -695,7 +701,14 @@ public class TaskService {
                 includeDetails ? checklistItems(task.getId()) : List.of(),
                 includeDetails ? attachmentDetails(task.getId()) : List.of(), reminderMinutes, task.getDeletedAt(),
                 task.getSequenceNumber(), task.getFormat(), task.getPlatform(), task.getRevisionCount(),
-                task.getFinishedAt(), task.getApprovedBy() == null ? null : displayName(task.getApprovedBy()));
+                task.getFinishedAt(), task.getApprovedBy() == null ? null : displayName(task.getApprovedBy()),
+                task.getProjectId(), projectName(task));
+    }
+
+    private String projectName(TaskEntity task) {
+        if (task.getProjectId() == null) return null;
+        return projectRepository.findById(task.getProjectId())
+                .map(uz.taskapp.project.ProjectEntity::getName).orElse(null);
     }
 
     private List<TaskPersonResponse> assigneeDetails(List<Long> userIds) {
@@ -1088,7 +1101,8 @@ public class TaskService {
                                List<TaskChecklistItemResponse> checklistItems,
                                List<TaskAttachmentResponse> attachments, Integer reminderMinutes,
                                Instant archivedAt, Long sequenceNumber, String format, String platform,
-                               int revisionCount, Instant finishedAt, String approvedByName) {
+                               int revisionCount, Instant finishedAt, String approvedByName,
+                               Long projectId, String projectName) {
         public String code() {
             return "TASK-" + String.format("%04d", sequenceNumber);
         }

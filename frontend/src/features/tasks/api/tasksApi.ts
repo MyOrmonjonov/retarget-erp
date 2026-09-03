@@ -53,6 +53,8 @@ interface TaskDto {
   revisionCount: number;
   finishedAt: string | null;
   approvedByName: string | null;
+  projectId: number | null;
+  projectName: string | null;
 }
 
 // Backend has no analog for frontend priority MEDIUM/backend NORMAL naming, but the two
@@ -143,10 +145,8 @@ function toTaskListItem(dto: TaskDto): TaskListItem {
     assigneeName: primary ? primary.name : '',
     assigneeAvatar: primary?.photoUrl ?? undefined,
     assigneeIds,
-    // Backend tasks aren't linked to a project (that link doesn't exist yet) - left blank,
-    // the Tasks page doesn't render these fields.
-    projectId: '',
-    projectName: '',
+    projectId: dto.projectId != null ? String(dto.projectId) : '',
+    projectName: dto.projectName ?? '',
     dueDate: dto.dueAt ?? dto.createdAt,
     tags: dto.format ? [dto.format] : [],
     checklistSummary: dto.checklist,
@@ -207,6 +207,8 @@ export interface TaskInput {
   /** Dizayn bo'limi only. */
   format?: string;
   platform?: string;
+  /** Optional link to a project, shown on that project's detail page. */
+  projectId?: string;
 }
 
 function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) {
@@ -226,6 +228,7 @@ function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) 
     reminderMinutes: data.reminderMinutes,
     format: data.format || undefined,
     platform: data.platform || undefined,
+    projectId: data.projectId ? Number(data.projectId) : undefined,
     ...extra,
   };
 }

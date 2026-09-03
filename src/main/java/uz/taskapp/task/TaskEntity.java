@@ -86,6 +86,11 @@ public class TaskEntity {
     @Column(name = "approved_by")
     private Long approvedBy;
 
+    /** Optional - tasks are workspace-wide in this app, not owned by a project the way the
+     *  reference CRM's task model is. Lets a task show up on a project's detail page when set. */
+    @Column(name = "project_id")
+    private Long projectId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -119,6 +124,11 @@ public class TaskEntity {
     public void changeStatus(TaskStatus status) {
         this.status = status;
         this.completedAt = status == TaskStatus.COMPLETED ? Instant.now() : null;
+        this.updatedAt = Instant.now();
+    }
+
+    public void linkProject(Long projectId) {
+        this.projectId = projectId;
         this.updatedAt = Instant.now();
     }
 
@@ -200,6 +210,7 @@ public class TaskEntity {
     public int getRevisionCount() { return revisionCount; }
     public Instant getFinishedAt() { return finishedAt; }
     public Long getApprovedBy() { return approvedBy; }
+    public Long getProjectId() { return projectId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
