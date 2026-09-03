@@ -54,7 +54,7 @@ public class ShootingEventService {
                 request.startTime(), request.endTime(), request.location(), request.type(), request.description());
         event.linkProject(request.projectId());
         event = eventRepository.save(event);
-        saveTeam(event.getId(), request.team());
+        saveTeam(request.workspaceId(), event.getId(), request.team());
         return ShootingEventResponse.from(event, teamOf(event.getId()));
     }
 
@@ -67,7 +67,7 @@ public class ShootingEventService {
                 request.type(), request.description());
         event.linkProject(request.projectId());
         teamMemberRepository.deleteAllByIdEventId(event.getId());
-        saveTeam(event.getId(), request.team());
+        saveTeam(workspaceId, event.getId(), request.team());
         return ShootingEventResponse.from(event, teamOf(event.getId()));
     }
 
@@ -86,9 +86,10 @@ public class ShootingEventService {
         eventRepository.delete(findWithinWorkspace(eventId, workspaceId));
     }
 
-    private void saveTeam(Long eventId, List<Long> team) {
+    private void saveTeam(Long workspaceId, Long eventId, List<Long> team) {
         if (team == null) return;
         for (Long userId : team) {
+            requireMembership(workspaceId, userId);
             teamMemberRepository.save(new ShootingEventTeamMemberEntity(eventId, userId));
         }
     }

@@ -15,10 +15,13 @@ import java.util.List;
 @Service
 public class PaymentService {
     private final PaymentRepository paymentRepository;
+    private final InvoiceRepository invoiceRepository;
     private final WorkspaceMemberRepository memberRepository;
 
-    public PaymentService(PaymentRepository paymentRepository, WorkspaceMemberRepository memberRepository) {
+    public PaymentService(PaymentRepository paymentRepository, InvoiceRepository invoiceRepository,
+                           WorkspaceMemberRepository memberRepository) {
         this.paymentRepository = paymentRepository;
+        this.invoiceRepository = invoiceRepository;
         this.memberRepository = memberRepository;
     }
 
@@ -40,6 +43,11 @@ public class PaymentService {
     @Transactional
     public PaymentResponse create(Long currentUserId, CreatePaymentRequest request) {
         requireMembership(request.workspaceId(), currentUserId);
+        if (request.invoiceId() != null) {
+            invoiceRepository.findByIdAndWorkspaceId(request.invoiceId(), request.workspaceId())
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "INVOICE_NOT_FOUND",
+                            "Hisob-faktura topilmadi: " + request.invoiceId()));
+        }
         PaymentEntity payment = new PaymentEntity(request.workspaceId(), request.invoiceId(), request.clientId(),
                 request.clientName(), request.amount(), request.currency(), request.dueDate(), request.method(),
                 request.description());

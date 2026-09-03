@@ -74,7 +74,7 @@ public class ProjectService {
                 request.clientName(), request.type(), ProjectStatus.PLANNING, 0, request.priority(),
                 request.managerId(), request.startDate(), request.deadline(), request.budget(), request.description());
         project = projectRepository.save(project);
-        replaceTeam(project.getId(), request.teamUserIds());
+        replaceTeam(request.workspaceId(), project.getId(), request.teamUserIds());
         return detail(currentUserId, request.workspaceId(), project.getId());
     }
 
@@ -86,7 +86,7 @@ public class ProjectService {
         project.update(request.name(), request.clientId(), request.clientName(), request.type(), request.priority(),
                 request.managerId(), request.startDate(), request.deadline(), request.budget(), request.description());
         if (request.teamUserIds() != null) {
-            replaceTeam(projectId, request.teamUserIds());
+            replaceTeam(workspaceId, projectId, request.teamUserIds());
         }
         return detail(currentUserId, workspaceId, projectId);
     }
@@ -127,10 +127,11 @@ public class ProjectService {
         projectRepository.delete(findWithinWorkspace(projectId, workspaceId));
     }
 
-    private void replaceTeam(Long projectId, List<Long> teamUserIds) {
+    private void replaceTeam(Long workspaceId, Long projectId, List<Long> teamUserIds) {
         memberOfProjectRepository.deleteAllByIdProjectId(projectId);
         if (teamUserIds == null) return;
         for (Long userId : teamUserIds.stream().distinct().toList()) {
+            requireMembership(workspaceId, userId);
             memberOfProjectRepository.save(new ProjectMemberEntity(projectId, userId));
         }
     }
