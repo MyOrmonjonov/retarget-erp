@@ -23,6 +23,7 @@ interface DashboardOverviewDto {
     name: string;
     avatar: string | null;
     position: string | null;
+    department: string | null;
     kpiScore: number;
     completedTasks: number;
     projectCount: number;
@@ -107,6 +108,7 @@ export const dashboardApi = {
       name: data.topEmployee.name,
       avatar: data.topEmployee.avatar ?? undefined,
       position: data.topEmployee.position ?? '',
+      department: data.topEmployee.department ?? '',
       kpiScore: data.topEmployee.kpiScore,
       completedTasks: data.topEmployee.completedTasks,
       projectCount: data.topEmployee.projectCount,

@@ -30,12 +30,15 @@ function motivationLabel(score: number): string {
   return 'Kritik signal';
 }
 
-const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: string }> = {
-  ACTIVE: { backgroundColor: '#E8F0FE', color: '#0071E3' },
-  PLANNING: { backgroundColor: '#F2F2F7', color: '#6E6E73' },
-  ON_HOLD: { backgroundColor: '#FFF4E5', color: '#FF9F0A' },
-  COMPLETED: { backgroundColor: '#E8FBED', color: '#34C759' },
-  CANCELLED: { backgroundColor: '#FFF0EF', color: '#FF3B30' },
+// Matches the reference CRM's StatusBadge exactly: soft fill + a matching border + a small
+// solid dot in front of the label - the border and dot are what make the status read as a
+// bold, distinct signal instead of a flat tinted chip.
+const statusStyle: Record<ProjectStatus, { backgroundColor: string; color: string; borderColor: string }> = {
+  ACTIVE: { backgroundColor: '#E8F0FE', color: '#0071E3', borderColor: '#93C5FD' },
+  PLANNING: { backgroundColor: '#F2F2F7', color: '#6E6E73', borderColor: '#D1D1D6' },
+  ON_HOLD: { backgroundColor: '#FFF4E5', color: '#FF9F0A', borderColor: '#FDBA74' },
+  COMPLETED: { backgroundColor: '#E8FBED', color: '#34C759', borderColor: '#86EFAC' },
+  CANCELLED: { backgroundColor: '#FFF0EF', color: '#FF3B30', borderColor: '#FCA5A5' },
 };
 
 const MOTIVATION_STAGES = ['Past', 'Xavf', 'Nazorat', 'Yaxshi', "A'lo"];
@@ -56,24 +59,28 @@ export function DashboardPage() {
           title="Loyihalar"
           value={stats?.totalProjects ?? '—'}
           subtitle={stats ? `${stats.activeProjects} ta faol` : undefined}
+          valueClassName="!text-[var(--color-accent)]"
           isLoading={statsLoading}
         />
         <StatCard
           title="Tasklar"
           value={stats ? `${stats.completedTasks}/${stats.totalTasks}` : '—'}
           subtitle="Bajarilgan ishlar"
+          valueClassName="!text-[var(--color-success)]"
           isLoading={statsLoading}
         />
         <StatCard
           title="Xodimlar"
           value={stats?.totalEmployees ?? '—'}
           subtitle="Real foydalanuvchilar"
+          valueClassName="!text-[var(--color-role-staff)]"
           isLoading={statsLoading}
         />
         <StatCard
           title="Tasdiq kutmoqda"
           value={stats?.pendingApprovals ?? '—'}
           subtitle="Kontent ko'rib chiqilmoqda"
+          valueClassName="!text-[var(--color-warning)]"
           isLoading={statsLoading}
         />
       </div>
@@ -127,7 +134,16 @@ export function DashboardPage() {
                         {project.client} &middot; {project.type || "Xizmat turi kiritilmagan"}
                       </p>
                       <div className="mt-1">
-                        <Badge style={statusStyle[project.status]}>{PROJECT_STATUS_LABELS[project.status]}</Badge>
+                        <Badge
+                          style={{ ...statusStyle[project.status], borderWidth: 1, borderStyle: 'solid' }}
+                          className="!font-extrabold gap-2"
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: statusStyle[project.status].color }}
+                          />
+                          {PROJECT_STATUS_LABELS[project.status]}
+                        </Badge>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
@@ -169,28 +185,21 @@ export function DashboardPage() {
                 </div>
               ) : topEmployee ? (
                 <>
-                  <div className="flex items-center gap-3">
-                    <Avatar name={topEmployee.name} src={topEmployee.avatar} size="lg" />
+                  <div className="flex items-center gap-3.5">
+                    <Avatar name={topEmployee.name} src={topEmployee.avatar} size="xl" />
                     <div className="min-w-0">
-                      <p className="text-body font-semibold text-[var(--color-text-primary)] truncate">
+                      <p className="text-[18px] font-black text-[var(--color-text-primary)] truncate">
                         {topEmployee.name}
                       </p>
-                      <p className="text-caption text-[var(--color-text-muted)] truncate">{topEmployee.position}</p>
+                      <p className="text-caption text-[var(--color-text-muted)] truncate">
+                        {topEmployee.position}{topEmployee.department ? ` · ${topEmployee.department}` : ''}
+                      </p>
                     </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-[10px] bg-[var(--color-bg-hover)] px-2 py-2 text-center">
-                      <p className="text-caption text-[var(--color-text-muted)]">KPI</p>
-                      <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.kpiScore}%</p>
-                    </div>
-                    <div className="rounded-[10px] bg-[var(--color-bg-hover)] px-2 py-2 text-center">
-                      <p className="text-caption text-[var(--color-text-muted)]">Bajarildi</p>
-                      <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.completedTasks}</p>
-                    </div>
-                    <div className="rounded-[10px] bg-[var(--color-bg-hover)] px-2 py-2 text-center">
-                      <p className="text-caption text-[var(--color-text-muted)]">Loyihalar</p>
-                      <p className="text-body font-semibold text-[var(--color-text-primary)]">{topEmployee.projectCount}</p>
-                    </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2.5">
+                    <StatCard title="KPI" value={`${topEmployee.kpiScore}%`} subtitle="Umumiy natija" valueClassName="!text-[var(--color-accent)]" />
+                    <StatCard title="Bajarildi" value={topEmployee.completedTasks} subtitle="Task soni" valueClassName="!text-[var(--color-success)]" />
+                    <StatCard title="Loyihalar" value={topEmployee.projectCount} subtitle="Biriktirilgan" valueClassName="!text-[var(--color-role-staff)]" />
                   </div>
                 </>
               ) : (
@@ -217,12 +226,12 @@ export function DashboardPage() {
               ) : teamLoad && teamLoad.length > 0 ? (
                 teamLoad.map((member) => (
                   <div key={member.employeeId}>
-                    <div className="flex items-center justify-between text-caption mb-1.5">
-                      <span className="text-[var(--color-text-primary)] font-medium">{member.name}</span>
-                      <span className="font-medium text-[var(--color-text-primary)]">{member.load}%</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] font-extrabold text-[var(--color-text-primary)]">{member.name}</span>
+                      <span className="text-[12px] text-[var(--color-text-muted)]">{member.load}%</span>
                     </div>
-                    <Progress value={member.load} max={100} variant={member.load > 75 ? 'warning' : 'accent'} size="sm" />
-                    <p className="mt-1 text-caption text-[var(--color-text-muted)]">
+                    <Progress value={member.load} max={100} variant={member.load > 75 ? 'warning' : 'accent'} size="md" />
+                    <p className="mt-[5px] text-[11px] text-[var(--color-text-muted)]">
                       Faol: {member.activeTasks} &middot; Kechikkan: {member.overdueTasks} &middot; Loyihalar: {member.projectCount}
                     </p>
                   </div>

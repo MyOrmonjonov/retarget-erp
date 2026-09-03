@@ -93,7 +93,7 @@ public class DashboardService {
                             emp.getUserId(), workspaceId);
                     long projectCount = projectRepository.countByWorkspaceIdAndManagerId(workspaceId, emp.getUserId());
                     return new TopEmployeeDto(emp.getId(), user == null ? "Foydalanuvchi" : displayName(user),
-                            user == null ? null : user.getPhotoUrl(), emp.getPosition(),
+                            user == null ? null : user.getPhotoUrl(), emp.getPosition(), emp.getDepartment(),
                             kpiScoreByUser.getOrDefault(emp.getUserId(), 0), completed, (int) projectCount);
                 })
                 .orElse(null);
@@ -207,8 +207,8 @@ public class DashboardService {
                                int overdueTasks, int projectCount) {
     }
 
-    public record TopEmployeeDto(Long id, String name, String avatar, String position, int kpiScore,
-                                  int completedTasks, int projectCount) {
+    public record TopEmployeeDto(Long id, String name, String avatar, String position, String department,
+                                  int kpiScore, int completedTasks, int projectCount) {
     }
 
     public record ProjectStatusDto(Long id, String name, String client, String type, String status, String priority,
