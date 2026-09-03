@@ -3,6 +3,19 @@ import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import { cn } from '@/shared/lib/utils';
 import { getInitials } from '@/shared/lib/utils';
 
+// Ported from the reference CRM's own Avatar: a deterministic color per person (keyed off the
+// first character of their name) instead of one flat neutral fallback - it's what makes a
+// list of people scannable by avatar color alone, not just by reading each name.
+const AVATAR_PALETTE = [
+  'var(--color-accent)', 'var(--color-role-staff)', 'var(--color-warning)',
+  'var(--color-success)', 'var(--color-role-operator)', '#E11D48',
+];
+
+function avatarColor(name?: string): string {
+  if (!name) return AVATAR_PALETTE[0];
+  return AVATAR_PALETTE[name.charCodeAt(0) % AVATAR_PALETTE.length];
+}
+
 interface AvatarProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
   name?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -37,9 +50,10 @@ const Avatar = React.forwardRef<
       />
       <AvatarPrimitive.Fallback
         className={cn(
-          'flex h-full w-full items-center justify-center rounded-full bg-[var(--color-bg-border)] text-[var(--color-text-secondary)] font-medium',
+          'flex h-full w-full items-center justify-center rounded-full text-white font-bold tracking-tight',
           sizes[size]
         )}
+        style={{ backgroundColor: avatarColor(name) }}
         delayMs={600}
       >
         {fallback}
