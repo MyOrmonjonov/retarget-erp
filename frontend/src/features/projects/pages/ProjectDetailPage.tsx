@@ -10,12 +10,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { FilterPills } from '@/shared/components/FilterPills';
+import { ArrowLeft, Plus, List, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS,
+  TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS,
   type Task, type TaskStatus,
 } from '@/shared/types';
+import { formatShortDate } from '@/shared/lib/utils';
 import { useProjects, useUpdateProject, useDeleteProject } from '../hooks/useProjects';
 import { ProjectForm, type ProjectFormData } from '../components/ProjectForm';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
@@ -24,6 +27,21 @@ import { tasksApi, type TaskDetail } from '@/features/tasks/api/tasksApi';
 import { TaskForm, type TaskFormData as TaskFormValues } from '@/features/tasks/components/TaskForm';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
 import { ContentPlanTab } from '../components/ContentPlanTab';
+
+const UZ_MONTHS = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+];
+
+function monthKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string): string {
+  const [year, month] = key.split('-').map(Number);
+  return `${UZ_MONTHS[month - 1]} ${year}`;
+}
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +75,21 @@ export function ProjectDetailPage() {
   }, [allTasks, id, byUserId]);
 
   const assigneeOptions = useMemo(() => employees.map((e) => ({ value: e.userId, label: e.fullName })), [employees]);
+
+  const currentMonth = useMemo(() => monthKey(new Date().toISOString()), []);
+  const [activeMonth, setActiveMonth] = useState(currentMonth);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+
+  const availableMonths = useMemo(() => {
+    const keys = new Set(projectTasks.map((t) => monthKey(t.dueDate)));
+    keys.add(currentMonth);
+    return Array.from(keys).sort().reverse();
+  }, [projectTasks, currentMonth]);
+
+  const monthTasks = useMemo(
+    () => projectTasks.filter((t) => monthKey(t.dueDate) === activeMonth),
+    [projectTasks, activeMonth]
+  );
 
   const handleMove = useCallback((taskId: string, newStatus: TaskStatus) => {
     changeStatus.mutate({ id: taskId, status: newStatus });
@@ -179,6 +212,12 @@ export function ProjectDetailPage() {
         </div>
       </Card>
 
+      <FilterPills
+        options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
+        value={activeMonth}
+        onChange={setActiveMonth}
+      />
+
       <Tabs defaultValue="tasks">
         <TabsList>
           <TabsTrigger value="tasks">Topshiriqlar</TabsTrigger>
@@ -186,7 +225,27 @@ export function ProjectDetailPage() {
         </TabsList>
         <TabsContent value="tasks">
           <div className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1 rounded-lg bg-[var(--color-bg-hover)] p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('kanban')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors ${
+                    viewMode === 'kanban' ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-secondary)]'
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4" /> Doska
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors ${
+                    viewMode === 'list' ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-secondary)]'
+                  }`}
+                >
+                  <List className="h-4 w-4" /> Ro'yxat
+                </button>
+              </div>
               <Button variant="primary" onClick={handleOpenCreateTask}>
                 <Plus className="h-4 w-4" />
                 Yangi vazifa
@@ -196,18 +255,34 @@ export function ProjectDetailPage() {
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[380px] w-[300px] flex-shrink-0 rounded-[14px]" />)}
               </div>
-            ) : (
+            ) : viewMode === 'kanban' ? (
               <KanbanBoard
                 columns={TARGET_COLUMNS}
-                tasks={projectTasks}
+                tasks={monthTasks}
                 onTaskMove={handleMove}
                 onTaskClick={handleOpenEditTask}
               />
+            ) : monthTasks.length === 0 ? (
+              <Card className="py-12 text-center">
+                <p className="text-[var(--color-text-secondary)]">{monthLabel(activeMonth)} uchun vazifa topilmadi</p>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {monthTasks.map((task) => (
+                  <Card key={task.id} className="p-3 flex items-center gap-3 cursor-pointer hover:border-[var(--color-text-muted)]" onClick={() => handleOpenEditTask(task)}>
+                    <p className="flex-1 min-w-0 truncate text-body text-[var(--color-text-primary)]">{task.title}</p>
+                    <Badge variant={TASK_PRIORITY_COLORS[task.priority]} size="sm">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
+                    <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
+                    <Badge size="sm">{TASK_STATUS_LABELS[task.status]}</Badge>
+                    <span className="text-caption text-[var(--color-text-muted)] w-16 text-right flex-shrink-0">{formatShortDate(task.dueDate)}</span>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
         </TabsContent>
         <TabsContent value="content-plan">
-          {id && <ContentPlanTab projectId={id} assigneeOptions={assigneeOptions} />}
+          {id && <ContentPlanTab projectId={id} assigneeOptions={assigneeOptions} activeMonth={activeMonth} />}
         </TabsContent>
       </Tabs>
 

@@ -9,6 +9,7 @@ import { Select } from '@/shared/ui/select';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Plus, Check, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { FilterPills } from '@/shared/components/FilterPills';
 import type { Task, TaskStatus } from '@/shared/types';
 import { TaskForm, type TaskFormData } from '@/features/tasks/components/TaskForm';
 import { tasksApi, type TaskDetail, type TaskListItem } from '@/features/tasks/api/tasksApi';
@@ -42,6 +43,21 @@ const MONTAJ_STATUS_COLORS: Record<TaskStatus, 'default' | 'success' | 'warning'
 function isVideoTask(task: TaskListItem): boolean {
   const haystack = `${task.title} ${task.description ?? ''}`.toLowerCase();
   return VIDEO_KEYWORDS.some((k) => haystack.includes(k));
+}
+
+const UZ_MONTHS = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+];
+
+function monthKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key: string): string {
+  const [year, month] = key.split('-').map(Number);
+  return `${UZ_MONTHS[month - 1]} ${year}`;
 }
 
 function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestRevision }: {
@@ -115,16 +131,30 @@ export function EditingDeptPage() {
   const editorIds = useMemo(() => new Set(editors.map((e) => e.userId)), [editors]);
   const isCurrentUserEditor = !!currentUser && editorIds.has(currentUser.id);
 
-  const videoTasks = useMemo(() => {
+  const currentMonth = useMemo(() => monthKey(new Date().toISOString()), []);
+  const [activeMonth, setActiveMonth] = useState(currentMonth);
+
+  const allVideoTasks = useMemo(() => {
     return allTasks
       .filter(isVideoTask)
-      .filter((t) => statusFilter === 'ALL' || t.status === statusFilter)
       .map((t) => {
         if (t.assigneeName || !t.assigneeId) return t;
         const employee = byUserId.get(t.assigneeId);
         return employee ? { ...t, assigneeName: employee.fullName, assigneeAvatar: employee.avatar } : t;
       });
-  }, [allTasks, statusFilter, byUserId]);
+  }, [allTasks, byUserId]);
+
+  const availableMonths = useMemo(() => {
+    const keys = new Set(allVideoTasks.map((t) => monthKey(t.dueDate)));
+    keys.add(currentMonth);
+    return Array.from(keys).sort().reverse();
+  }, [allVideoTasks, currentMonth]);
+
+  const videoTasks = useMemo(() => {
+    return allVideoTasks
+      .filter((t) => monthKey(t.dueDate) === activeMonth)
+      .filter((t) => statusFilter === 'ALL' || t.status === statusFilter);
+  }, [allVideoTasks, activeMonth, statusFilter]);
 
   const tasksByColumn = useMemo(() => {
     const grouped = new Map<string, TaskListItem[]>();
@@ -200,6 +230,12 @@ export function EditingDeptPage() {
 
   return (
     <div className="space-y-6 animate-in">
+      <FilterPills
+        options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
+        value={activeMonth}
+        onChange={setActiveMonth}
+      />
+
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <p className="text-caption text-[var(--color-text-secondary)]">

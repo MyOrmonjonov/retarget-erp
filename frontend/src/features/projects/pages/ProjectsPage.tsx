@@ -17,6 +17,7 @@ import { ProjectForm, type ProjectFormData } from '../components/ProjectForm';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, useChangeProjectStatus } from '../hooks/useProjects';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
+import { useTasks } from '@/features/tasks/hooks/useTasks';
 import { formatShortDate } from '@/shared/lib/utils';
 
 const STATUS_OPTIONS: ProjectStatus[] = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
@@ -45,8 +46,9 @@ function InlineStatusSelect({ project, onChange }: { project: Project; onChange:
   );
 }
 
-function ProjectCard({ project, onOpen, onEdit, onChangeStatus }: {
+function ProjectCard({ project, designProgress, onOpen, onEdit, onChangeStatus }: {
   project: Project;
+  designProgress: number | null;
   onOpen: () => void;
   onEdit: () => void;
   onChangeStatus: (status: ProjectStatus) => void;
@@ -108,6 +110,9 @@ function ProjectCard({ project, onOpen, onEdit, onChangeStatus }: {
         <span>{project.type}</span>
         <span>{project.deadline ? formatShortDate(project.deadline) : '—'}</span>
       </div>
+      {designProgress != null && (
+        <p className="mt-1 text-caption text-[var(--color-text-muted)]">Dizayn: {designProgress}%</p>
+      )}
     </Card>
   );
 }
@@ -119,6 +124,7 @@ export function ProjectsPage() {
 
   const { data: projects = [], isLoading } = useProjects();
   const { data: employeeList = [] } = useEmployees();
+  const { data: allTasks = [] } = useTasks();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -128,6 +134,22 @@ export function ProjectsPage() {
     () => employeeList.map((e) => ({ value: e.userId, label: e.fullName })),
     [employeeList]
   );
+
+  // "Dizayn: X%" card line, ported from the reference CRM's Projects page - a design task is
+  // one that went through the Dizayn bo'limi flow (it has a format/platform tag set).
+  const designProgressByProject = useMemo(() => {
+    const byProject = new Map<string, { total: number; done: number }>();
+    for (const task of allTasks) {
+      if (!task.projectId || !task.tags || task.tags.length === 0) continue;
+      const stat = byProject.get(task.projectId) ?? { total: 0, done: 0 };
+      stat.total += 1;
+      if (task.status === 'DONE') stat.done += 1;
+      byProject.set(task.projectId, stat);
+    }
+    const result = new Map<string, number>();
+    byProject.forEach((stat, projectId) => result.set(projectId, Math.round((stat.done / stat.total) * 100)));
+    return result;
+  }, [allTasks]);
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -230,6 +252,7 @@ export function ProjectsPage() {
             <ProjectCard
               key={project.id}
               project={project}
+              designProgress={designProgressByProject.get(String(project.id)) ?? null}
               onOpen={() => navigate(`/projects/${project.id}`)}
               onEdit={() => handleOpenEditForm(project)}
               onChangeStatus={(status) => changeStatus.mutate({ id: String(project.id), status })}

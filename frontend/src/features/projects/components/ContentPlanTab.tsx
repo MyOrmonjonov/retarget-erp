@@ -20,13 +20,15 @@ import type { ContentPlanItem, ContentPlanItemInput } from '../api/contentPlanAp
 interface ContentPlanTabProps {
   projectId: string;
   assigneeOptions: { value: string; label: string }[];
+  /** "YYYY-MM" - scopes the visible list and defaults new items into this month. */
+  activeMonth: string;
 }
 
 const PLATFORM_OPTIONS = ['Instagram', 'Telegram', 'Facebook', 'TikTok', 'Boshqa'];
 const STATUS_OPTIONS = ["G'oya", 'Ssenariy', 'Suratga olish', 'Montaj', 'Tasdiqlash', 'Post qilindi'];
 
-function emptyForm(): ContentPlanItemInput {
-  return { date: '', topic: '', caption: '', note: '', format: '', platforms: [], statuses: [], ownerIds: [] };
+function emptyForm(defaultDate = ''): ContentPlanItemInput {
+  return { date: defaultDate, topic: '', caption: '', note: '', format: '', platforms: [], statuses: [], ownerIds: [] };
 }
 
 function toggle<T>(list: T[], value: T): T[] {
@@ -55,13 +57,14 @@ function ChipToggle({ options, selected, onToggle }: { options: string[]; select
   );
 }
 
-function ContentPlanItemForm({ isOpen, onClose, onSubmit, initialData, isLoading, assigneeOptions }: {
+function ContentPlanItemForm({ isOpen, onClose, onSubmit, initialData, isLoading, assigneeOptions, defaultDate }: {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ContentPlanItemInput) => Promise<void>;
   initialData?: ContentPlanItem | null;
   isLoading?: boolean;
   assigneeOptions: { value: string; label: string }[];
+  defaultDate: string;
 }) {
   const [form, setForm] = useState<ContentPlanItemInput>(emptyForm());
   const [dateError, setDateError] = useState<string | undefined>();
@@ -79,9 +82,9 @@ function ContentPlanItemForm({ isOpen, onClose, onSubmit, initialData, isLoading
           statuses: initialData.statuses,
           ownerIds: initialData.ownerIds,
         }
-      : emptyForm());
+      : emptyForm(defaultDate));
     setDateError(undefined);
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, defaultDate]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -167,8 +170,8 @@ function ContentPlanItemForm({ isOpen, onClose, onSubmit, initialData, isLoading
   );
 }
 
-export function ContentPlanTab({ projectId, assigneeOptions }: ContentPlanTabProps) {
-  const { data: items = [], isLoading } = useContentPlan(projectId);
+export function ContentPlanTab({ projectId, assigneeOptions, activeMonth }: ContentPlanTabProps) {
+  const { data: allItems = [], isLoading } = useContentPlan(projectId);
   const createItem = useCreateContentPlanItem(projectId);
   const updateItem = useUpdateContentPlanItem(projectId);
   const deleteItem = useDeleteContentPlanItem(projectId);
@@ -177,6 +180,7 @@ export function ContentPlanTab({ projectId, assigneeOptions }: ContentPlanTabPro
   const [editingItem, setEditingItem] = useState<ContentPlanItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<ContentPlanItem | null>(null);
 
+  const items = allItems.filter((item) => item.date.slice(0, 7) === activeMonth);
   const byUserId = new Map(assigneeOptions.map((a) => [a.value, a.label]));
 
   const handleOpenCreate = () => {
@@ -223,7 +227,7 @@ export function ContentPlanTab({ projectId, assigneeOptions }: ContentPlanTabPro
           <div className="p-6 space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
         ) : items.length === 0 ? (
           <p className="text-center text-[var(--color-text-secondary)] py-12">
-            Kontent reja hali bo'sh - "Yangi band" tugmasi orqali qo'shing
+            Bu oy uchun kontent reja hali bo'sh - "Yangi band" tugmasi orqali qo'shing
           </p>
         ) : (
           <Table>
@@ -283,6 +287,7 @@ export function ContentPlanTab({ projectId, assigneeOptions }: ContentPlanTabPro
         initialData={editingItem}
         isLoading={createItem.isPending || updateItem.isPending}
         assigneeOptions={assigneeOptions}
+        defaultDate={`${activeMonth}-01`}
       />
 
       <DeleteConfirmation
