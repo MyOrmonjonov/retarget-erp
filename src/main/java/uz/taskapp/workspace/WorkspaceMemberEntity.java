@@ -56,4 +56,12 @@ public class WorkspaceMemberEntity {
         this.active = true;
         this.temporarilyBlocked = false;
     }
+
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public void changeRole(String roleCode) {
+        this.roleCode = roleCode;
+    }
 }
