@@ -16,6 +16,7 @@ import {
   MessagesSquare,
   TrendingUp,
   Sparkles,
+  UserPlus,
 } from 'lucide-react';
 
 export const NAV_ITEMS: NavItem[] = [
@@ -76,6 +77,12 @@ export const NAV_ITEMS: NavItem[] = [
         icon: MessagesSquare,
         href: '/groups',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
+      },
+      {
+        label: 'Jamoa a\'zolari',
+        icon: UserPlus,
+        href: '/team-members',
+        roles: ['CEO'],
       },
     ],
   },

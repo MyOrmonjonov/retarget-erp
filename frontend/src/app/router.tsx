@@ -13,6 +13,7 @@ import { ProjectsPage } from '@/features/projects/pages/ProjectsPage';
 import { ProjectDetailPage } from '@/features/projects/pages/ProjectDetailPage';
 import { TasksPage } from '@/features/tasks/pages/TasksPage';
 import { EmployeesPage } from '@/features/employees/pages/EmployeesPage';
+import { TeamMembersPage } from '@/features/workspace/pages/TeamMembersPage';
 import { EmployeeProfilePage } from '@/features/employees/pages/EmployeeProfilePage';
 import { AttendancePage } from '@/features/employees/pages/AttendancePage';
 import { KPIPage } from '@/features/employees/pages/KPIPage';
@@ -85,6 +86,14 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth allowedRoles={['CEO', 'MENEJER', 'BOSHQARUVCHI']}>
                 <EmployeesPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/team-members',
+            element: (
+              <RequireAuth allowedRoles={['CEO']}>
+                <TeamMembersPage />
               </RequireAuth>
             ),
           },
