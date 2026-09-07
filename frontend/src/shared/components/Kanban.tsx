@@ -286,7 +286,7 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask
       onDragEnd={handleDragEnd}
     >
       <div
-        className={cn('flex gap-4 overflow-x-auto pb-4 touch-pan-x', className)}
+        className={cn('flex gap-4 overflow-x-auto pb-4 touch-pan-x kanban-scroll', className)}
         role="region"
         aria-label="Kanban doskasi"
       >

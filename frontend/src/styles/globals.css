@@ -116,7 +116,9 @@
     min-height: 100vh;
   }
 
-  /* Scrollbar Styling */
+  /* Scrollbar Styling - thumb uses --color-text-muted (not --color-bg-border) since the border
+     token sits almost flush against the page's own light-grey background, making the scrollbar
+     nearly invisible - most noticeable on thin horizontal bars like the Kanban board's. */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -127,12 +129,42 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--color-bg-border);
+    background: var(--color-text-muted);
     border-radius: var(--radius-full);
   }
 
   ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+  }
+
+  * {
+    scrollbar-color: var(--color-text-muted) var(--color-bg-primary);
+  }
+
+  /* Kanban board's horizontal scroll is a primary navigation affordance (reaching the later
+     columns), not incidental overflow - given it a taller, always-visible bar instead of the
+     thin default so it reads clearly at the bottom of the board. */
+  .kanban-scroll {
+    scrollbar-color: var(--color-text-muted) var(--color-bg-hover);
+  }
+
+  .kanban-scroll::-webkit-scrollbar {
+    height: 10px;
+  }
+
+  .kanban-scroll::-webkit-scrollbar-track {
+    background: var(--color-bg-hover);
+    border-radius: var(--radius-full);
+  }
+
+  .kanban-scroll::-webkit-scrollbar-thumb {
     background: var(--color-text-muted);
+    border: 2px solid var(--color-bg-hover);
+    border-radius: var(--radius-full);
+  }
+
+  .kanban-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
   }
 
   /* Focus Styles */
