@@ -9,9 +9,10 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Plus, Search, Check, ListChecks, Paperclip, List, LayoutGrid, CheckSquare } from 'lucide-react';
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/shared/types';
+import { TASK_PRIORITY_LABELS } from '@/shared/types';
 import type { Task, TaskPriority, TaskStatus } from '@/shared/types';
 import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
+import { InlineTaskStatusSelect } from '@/shared/components/InlineTaskStatusSelect';
 import { TaskForm, type TaskFormData } from '../components/TaskForm';
 import type { TaskListItem, TaskDetail } from '../api/tasksApi';
 import { tasksApi } from '../api/tasksApi';
@@ -41,36 +42,6 @@ const priorityTextColor: Record<TaskPriority, string> = {
   URGENT: 'text-[var(--color-error)]',
 };
 
-// Matches the Kanban board's own per-status colors (Kanban.tsx's TARGET_COLUMNS) so a task's
-// status reads the same color everywhere in the app, not just here.
-const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
-  BACKLOG: '#6B7280',
-  TODO: '#6B7280',
-  IN_PROGRESS: '#0071E3',
-  EDITING: '#5856D6',
-  REVIEW: '#FF9F0A',
-  DONE: '#34C759',
-  BLOCKED: '#FF3B30',
-};
-
-const STATUS_SELECT_OPTIONS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'EDITING', 'REVIEW', 'DONE', 'BLOCKED'];
-
-function InlineTaskStatusSelect({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void }) {
-  const color = TASK_STATUS_COLOR[status];
-  return (
-    <select
-      value={status}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => onChange(e.target.value as TaskStatus)}
-      className="text-caption font-bold rounded-full pl-3 pr-1.5 py-1 border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
-      style={{ backgroundColor: `${color}1F`, borderColor: `${color}55`, color }}
-    >
-      {STATUS_SELECT_OPTIONS.map((s) => (
-        <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
-      ))}
-    </select>
-  );
-}
 
 function isSameDay(dateStr: string, ref: Date) {
   const d = new Date(dateStr);

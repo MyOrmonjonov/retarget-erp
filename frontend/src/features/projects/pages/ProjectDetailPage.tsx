@@ -16,15 +16,16 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { toast } from 'sonner';
 import {
   PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS,
-  TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS, TASK_STATUS_COLORS,
+  TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS,
   type Task, type TaskStatus,
 } from '@/shared/types';
 import { formatShortDate } from '@/shared/lib/utils';
 import { useProjects, useUpdateProject, useDeleteProject } from '../hooks/useProjects';
 import { ProjectForm, type ProjectFormData } from '../components/ProjectForm';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
-import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus } from '@/features/tasks/hooks/useTasks';
+import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus, useDeleteTask } from '@/features/tasks/hooks/useTasks';
 import { tasksApi, type TaskDetail } from '@/features/tasks/api/tasksApi';
+import { InlineTaskStatusSelect } from '@/shared/components/InlineTaskStatusSelect';
 import { TaskForm, type TaskFormData as TaskFormValues } from '@/features/tasks/components/TaskForm';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
 import { useContentPlan } from '../hooks/useContentPlan';
@@ -62,6 +63,7 @@ export function ProjectDetailPage() {
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const changeStatus = useChangeTaskStatus();
+  const deleteTask = useDeleteTask();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
 
@@ -71,6 +73,7 @@ export function ProjectDetailPage() {
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [isTaskFormLoading, setIsTaskFormLoading] = useState(false);
   const [createDefaultStatus, setCreateDefaultStatus] = useState<TaskStatus | undefined>();
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
 
   const byUserId = useMemo(() => new Map(employees.map((e) => [e.userId, e])), [employees]);
   const projectTasks = useMemo(() => {
@@ -164,6 +167,12 @@ export function ProjectDetailPage() {
   const handleMove = useCallback((taskId: string, newStatus: TaskStatus) => {
     changeStatus.mutate({ id: taskId, status: newStatus });
   }, [changeStatus]);
+
+  const handleConfirmDeleteTask = useCallback(async () => {
+    if (!deletingTask) return;
+    await deleteTask.mutateAsync(String(deletingTask.id));
+    setDeletingTask(null);
+  }, [deletingTask, deleteTask]);
 
   const handleOpenCreateTask = useCallback((status?: TaskStatus) => {
     setCreateDefaultStatus(status);
@@ -468,12 +477,34 @@ export function ProjectDetailPage() {
             ) : (
               <div className="space-y-2">
                 {monthTasks.map((task) => (
-                  <Card key={task.id} className="p-3 flex items-center gap-3 cursor-pointer hover:border-[var(--color-text-muted)]" onClick={() => handleOpenEditTask(task)}>
-                    <p className="flex-1 min-w-0 truncate text-body text-[var(--color-text-primary)]">{task.title}</p>
-                    <Badge variant={TASK_PRIORITY_COLORS[task.priority]} size="sm">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
-                    <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
-                    <Badge variant={TASK_STATUS_COLORS[task.status]} size="sm" dot>{TASK_STATUS_LABELS[task.status]}</Badge>
-                    <span className="text-caption text-[var(--color-text-muted)] w-16 text-right flex-shrink-0">{formatShortDate(task.dueDate)}</span>
+                  <Card key={task.id} className="p-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleOpenEditTask(task)}>
+                      <p className="truncate text-body text-[var(--color-text-primary)]">{task.title}</p>
+                      <span className="inline-flex items-center gap-2 mt-1">
+                        <Badge variant={TASK_PRIORITY_COLORS[task.priority]} size="sm">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
+                        <span className="flex items-center gap-1.5">
+                          <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
+                          <span className="text-caption text-[var(--color-text-secondary)]">{task.assigneeName}</span>
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-end">
+                      <InlineTaskStatusSelect status={task.status} onChange={(status) => handleMove(String(task.id), status)} />
+                      <span className="text-caption text-[var(--color-text-muted)]">{formatShortDate(task.dueDate)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenEditTask(task)}>
+                        Tahrirlash
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingTask(task)}
+                        className="bg-[var(--color-error-muted)] text-[var(--color-error)] hover:bg-[var(--color-error-muted)]"
+                      >
+                        O'chirish
+                      </Button>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -512,6 +543,16 @@ export function ProjectDetailPage() {
         title="Loyihani o'chirish"
         description="Bu loyiha doimiy o'chiriladi. Davom etishni xohlaysizmi?"
         itemName={project.name}
+      />
+
+      <DeleteConfirmation
+        isOpen={!!deletingTask}
+        onClose={() => setDeletingTask(null)}
+        onConfirm={handleConfirmDeleteTask}
+        isLoading={deleteTask.isPending}
+        title="Vazifani o'chirish"
+        description="Bu vazifa arxivlanadi. Davom etishni xohlaysizmi?"
+        itemName={deletingTask?.title}
       />
     </div>
   );
