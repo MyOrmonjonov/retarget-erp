@@ -11,11 +11,11 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { CircularProgress } from '@/shared/components/CircularProgress';
 import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
 import { FilterPills } from '@/shared/components/FilterPills';
-import { ArrowLeft, Plus, List, LayoutGrid, FolderKanban, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Plus, List, LayoutGrid, FolderKanban, CheckSquare, Calendar, Users, Wallet } from 'lucide-react';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { toast } from 'sonner';
 import {
-  PROJECT_STATUS_LABELS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS,
+  PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, PROJECT_PRIORITY_LABELS, PROJECT_PRIORITY_COLORS,
   TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS, TASK_STATUS_COLORS,
   type Task, type TaskStatus,
 } from '@/shared/types';
@@ -27,6 +27,7 @@ import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus } from '@/f
 import { tasksApi, type TaskDetail } from '@/features/tasks/api/tasksApi';
 import { TaskForm, type TaskFormData as TaskFormValues } from '@/features/tasks/components/TaskForm';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
+import { useContentPlan } from '../hooks/useContentPlan';
 import { ContentPlanTab } from '../components/ContentPlanTab';
 
 const UZ_MONTHS = [
@@ -52,6 +53,7 @@ export function ProjectDetailPage() {
 
   const { data: allTasks = [], isLoading: tasksLoading } = useTasks();
   const { data: employees = [] } = useEmployees();
+  const { data: contentItems = [] } = useContentPlan(id ?? '');
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const changeStatus = useChangeTaskStatus();
@@ -80,17 +82,44 @@ export function ProjectDetailPage() {
   const currentMonth = useMemo(() => monthKey(new Date().toISOString()), []);
   const [activeMonth, setActiveMonth] = useState(currentMonth);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  /** Months added via "+ Yangi oy" before any task/content item exists in them yet - months
+   *  aren't a real backend entity (just a due-date grouping), so this is purely local state
+   *  to let a user open an empty future month ahead of adding anything to it. */
+  const [extraMonths, setExtraMonths] = useState<string[]>([]);
 
   const availableMonths = useMemo(() => {
     const keys = new Set(projectTasks.map((t) => monthKey(t.dueDate)));
+    contentItems.forEach((c) => keys.add(monthKey(c.date)));
+    extraMonths.forEach((m) => keys.add(m));
     keys.add(currentMonth);
     return Array.from(keys).sort().reverse();
-  }, [projectTasks, currentMonth]);
+  }, [projectTasks, contentItems, extraMonths, currentMonth]);
+
+  const handleAddNextMonth = useCallback(() => {
+    const [latestYear, latestMonth] = availableMonths[0].split('-').map(Number);
+    const next = new Date(latestYear, latestMonth, 1); // JS months are 0-based, so this is +1
+    setExtraMonths((prev) => [...prev, monthKey(next.toISOString())]);
+  }, [availableMonths]);
 
   const monthTasks = useMemo(
     () => projectTasks.filter((t) => monthKey(t.dueDate) === activeMonth),
     [projectTasks, activeMonth]
   );
+
+  const monthContentItems = useMemo(
+    () => contentItems.filter((c) => monthKey(c.date) === activeMonth),
+    [contentItems, activeMonth]
+  );
+
+  const monthStats = useMemo(() => {
+    const doneTasks = monthTasks.filter((t) => t.status === 'DONE').length;
+    const doneContent = monthContentItems.filter((c) => c.statuses.includes('Post qilindi')).length;
+    const total = monthTasks.length + monthContentItems.length;
+    const done = doneTasks + doneContent;
+    return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
+  }, [monthTasks, monthContentItems]);
+
+  const manager = byUserId.get(project?.managerId ?? '');
 
   const handleMove = useCallback((taskId: string, newStatus: TaskStatus) => {
     changeStatus.mutate({ id: taskId, status: newStatus });
@@ -174,57 +203,128 @@ export function ProjectDetailPage() {
       </button>
 
       <Card className="p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <CircularProgress value={project.progress} size={64} strokeWidth={5} variant="accent" fillColor="var(--color-bg-hover)" />
-            <div>
+        <div className="flex items-start justify-between gap-6 flex-wrap">
+          <div className="flex items-start gap-4 min-w-0">
+            <CircularProgress
+              value={project.progress}
+              size={64}
+              strokeWidth={6}
+              variant={project.progress > 0 ? 'success' : 'default'}
+              caption={project.progressTotal > 0 ? `${project.progressDone}/${project.progressTotal}` : undefined}
+            />
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-h2 font-bold text-[var(--color-text-primary)]">{project.name}</h1>
+                <Badge variant={PROJECT_STATUS_COLORS[project.status]} size="sm">
+                  {PROJECT_STATUS_LABELS[project.status]}
+                </Badge>
                 <Badge variant={PROJECT_PRIORITY_COLORS[project.priority]} size="sm">
                   {PROJECT_PRIORITY_LABELS[project.priority]}
                 </Badge>
               </div>
               <p className="text-caption text-[var(--color-text-secondary)] mt-1">
-                {project.client} &middot; {PROJECT_STATUS_LABELS[project.status]}
+                {project.client} &middot; {project.type}
               </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => setIsEditOpen(true)}>Tahrirlash</Button>
-            <Button variant="ghost" onClick={() => setIsDeleteOpen(true)} className="text-[var(--color-error)]">
-              O'chirish
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-5 pt-5 border-t border-[var(--color-bg-border)]">
-          <span className="flex items-center gap-1.5 text-caption text-[var(--color-text-secondary)]">
-            <Avatar name={project.managerName} src={project.managerAvatar} size="xs" />
-            Mas'ul: {project.managerName}
-          </span>
-          {project.team.length > 0 && (
-            <div className="flex items-center">
-              {project.team.map((member, index) => (
-                <div key={member.userId} style={{ marginLeft: index ? -8 : 0 }} className="ring-2 ring-[var(--color-bg-surface)] rounded-full">
-                  <Avatar name={member.name} src={member.avatar} size="xs" />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-caption text-[var(--color-text-muted)]">
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {project.startDate ? formatShortDate(project.startDate) : '—'} &rarr; {project.deadline ? formatShortDate(project.deadline) : '—'}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  {project.team.length} kishi
+                </span>
+                {project.budget != null && (
+                  <span className="flex items-center gap-1">
+                    <Wallet className="h-3.5 w-3.5" />
+                    {project.budget.toLocaleString('en-US')} so'm
+                  </span>
+                )}
+              </div>
+              {project.team.length > 0 && (
+                <div className="flex items-center mt-2">
+                  {project.team.map((member, index) => (
+                    <div key={member.userId} style={{ marginLeft: index ? -8 : 0 }} className="ring-2 ring-[var(--color-bg-surface)] rounded-full">
+                      <Avatar name={member.name} src={member.avatar} size="xs" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
+          <div className="flex flex-col items-end gap-3 flex-shrink-0">
+            <div>
+              <p className="text-caption text-[var(--color-text-muted)] mb-1">Manager</p>
+              <div className="flex items-center gap-2">
+                <Avatar name={project.managerName} src={project.managerAvatar} size="sm" />
+                <div>
+                  <p className="text-body font-medium text-[var(--color-text-primary)]">{project.managerName}</p>
+                  {manager?.position && <p className="text-caption text-[var(--color-text-muted)]">{manager.position}</p>}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setIsEditOpen(true)}>Tahrirlash</Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDeleteOpen(true)}
+                className="bg-[var(--color-error-muted)] text-[var(--color-error)] hover:bg-[var(--color-error-muted)]"
+              >
+                O'chirish
+              </Button>
+            </div>
+          </div>
         </div>
       </Card>
 
-      <FilterPills
-        options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
-        value={activeMonth}
-        onChange={setActiveMonth}
-      />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <FilterPills
+          options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
+          value={activeMonth}
+          onChange={setActiveMonth}
+        />
+        <Button variant="accent" size="sm" onClick={handleAddNextMonth}>
+          <Plus className="h-4 w-4" />
+          Yangi oy
+        </Button>
+      </div>
 
       <Tabs defaultValue="tasks">
-        <TabsList>
-          <TabsTrigger value="tasks">Topshiriqlar</TabsTrigger>
-          <TabsTrigger value="content-plan">Kontent reja</TabsTrigger>
-        </TabsList>
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4 min-w-0">
+              <CircularProgress
+                value={monthStats.pct}
+                size={56}
+                strokeWidth={5}
+                variant={monthStats.pct > 0 ? 'accent' : 'default'}
+                caption={monthStats.total > 0 ? `${monthStats.done}/${monthStats.total}` : undefined}
+              />
+              <div className="min-w-0">
+                <p className="font-bold text-[var(--color-text-primary)]">{monthLabel(activeMonth)}</p>
+                <TabsList className="mt-1.5">
+                  <TabsTrigger value="tasks">Topshiriqlar</TabsTrigger>
+                  <TabsTrigger value="content-plan">Kontent reja</TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="rounded-lg bg-[var(--color-bg-hover)] px-4 py-2.5 text-center min-w-[72px]">
+                <p className="text-h3 font-bold text-[var(--color-accent)]">{monthTasks.length}</p>
+                <p className="text-caption text-[var(--color-text-muted)]">Task</p>
+              </div>
+              <div className="rounded-lg bg-[var(--color-bg-hover)] px-4 py-2.5 text-center min-w-[72px]">
+                <p className="text-h3 font-bold text-[var(--color-success)]">{monthContentItems.length}</p>
+                <p className="text-caption text-[var(--color-text-muted)]">Kontent</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--color-bg-border)]">
+            <span className="text-caption text-[var(--color-text-muted)]">{project.team.length} kishi biriktirilgan</span>
+            <Badge variant={PROJECT_STATUS_COLORS[project.status]} size="sm">{PROJECT_STATUS_LABELS[project.status]}</Badge>
+          </div>
+        </Card>
         <TabsContent value="tasks">
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
