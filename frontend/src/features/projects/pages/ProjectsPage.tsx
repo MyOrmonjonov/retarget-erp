@@ -57,18 +57,9 @@ function ProjectCard({ project, designProgress, onOpen, onEdit, onChangeStatus }
   return (
     <Card className="p-5 cursor-pointer hover:border-[var(--color-text-muted)] transition-colors" onClick={onOpen}>
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <CircularProgress
-            value={project.progress}
-            size={64}
-            strokeWidth={6}
-            variant={project.progress > 0 ? 'success' : 'default'}
-            caption={project.progressTotal > 0 ? `${project.progressDone}/${project.progressTotal}` : undefined}
-          />
-          <div className="min-w-0">
-            <p className="font-medium text-[var(--color-text-primary)] truncate">{project.name}</p>
-            <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
-          </div>
+        <div className="min-w-0">
+          <p className="font-bold text-[var(--color-text-primary)] truncate">{project.name}</p>
+          <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Badge variant={PROJECT_PRIORITY_COLORS[project.priority]} size="sm">
@@ -85,13 +76,29 @@ function ProjectCard({ project, designProgress, onOpen, onEdit, onChangeStatus }
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <InlineStatusSelect project={project} onChange={onChangeStatus} />
-        {project.budget != null && (
-          <span className="text-caption text-[var(--color-text-muted)]">
-            {project.budget.toLocaleString('en-US')} so'm
-          </span>
-        )}
+      <div className="flex items-center gap-3">
+        <CircularProgress
+          value={project.progress}
+          size={64}
+          strokeWidth={6}
+          variant={project.progress > 0 ? 'success' : 'default'}
+          caption={project.progressTotal > 0 ? `${project.progressDone}/${project.progressTotal}` : undefined}
+        />
+        <div className="min-w-0 space-y-1.5">
+          <InlineStatusSelect project={project} onChange={onChangeStatus} />
+          <p className="text-caption text-[var(--color-text-muted)] truncate">{project.type}</p>
+          <p className="text-caption text-[var(--color-text-muted)]">
+            Muddat: {project.deadline ? formatShortDate(project.deadline) : '—'}
+          </p>
+          {project.budget != null && (
+            <p className="text-caption text-[var(--color-text-muted)]">
+              Xizmat narxi: {project.budget.toLocaleString('en-US')} so'm
+            </p>
+          )}
+          {designProgress != null && (
+            <p className="text-caption text-[var(--color-text-muted)]">Dizayn: {designProgress}%</p>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--color-bg-border)]">
@@ -112,14 +119,6 @@ function ProjectCard({ project, designProgress, onOpen, onEdit, onChangeStatus }
           </div>
         )}
       </div>
-
-      <div className="mt-3 flex items-center justify-between text-caption text-[var(--color-text-muted)]">
-        <span>{project.type}</span>
-        <span>{project.deadline ? formatShortDate(project.deadline) : '—'}</span>
-      </div>
-      {designProgress != null && (
-        <p className="mt-1 text-caption text-[var(--color-text-muted)]">Dizayn: {designProgress}%</p>
-      )}
     </Card>
   );
 }
