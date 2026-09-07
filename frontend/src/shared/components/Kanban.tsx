@@ -44,7 +44,10 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, isLoading }: Kanban
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
-    <div className="flex flex-col min-w-[300px] max-w-[300px] flex-shrink-0">
+    <div
+      className="flex flex-col min-w-[300px] max-w-[300px] min-h-[160px] flex-shrink-0 rounded-xl border"
+      style={{ backgroundColor: `${column.color}14`, borderColor: `${column.color}33` }}
+    >
       {/* Column Header */}
       <div className="flex items-center justify-between px-3 py-2.5">
         <h3
@@ -66,7 +69,7 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, isLoading }: Kanban
         <div
           ref={setNodeRef}
           className={cn(
-            'flex-1 overflow-y-auto space-y-2 px-2 pb-4 pr-3 rounded-lg transition-colors',
+            'flex-1 overflow-y-auto space-y-2 px-2 pb-3 pr-3 rounded-lg transition-colors',
             isOver && 'bg-[var(--color-accent-muted)]/40'
           )}
           role="list"
