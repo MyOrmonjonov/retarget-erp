@@ -9,6 +9,7 @@ import uz.taskapp.employee.EmployeeProfileEntity;
 import uz.taskapp.employee.EmployeeProfileRepository;
 import uz.taskapp.kpi.KpiRecordRepository;
 import uz.taskapp.project.ProjectEntity;
+import uz.taskapp.project.ProjectMemberRepository;
 import uz.taskapp.project.ProjectProgressCalculator;
 import uz.taskapp.project.ProjectRepository;
 import uz.taskapp.project.ProjectStatus;
@@ -17,9 +18,11 @@ import uz.taskapp.user.UserRepository;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Aggregates Project/Task/Employee/Expense data for the retarget-erp Dashboard page.
@@ -30,6 +33,7 @@ import java.util.Map;
 public class DashboardService {
     private final JdbcTemplate jdbcTemplate;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final EmployeeProfileRepository employeeRepository;
     private final KpiRecordRepository kpiRepository;
     private final UserRepository userRepository;
@@ -37,11 +41,13 @@ public class DashboardService {
     private final ProjectProgressCalculator progressCalculator;
 
     public DashboardService(JdbcTemplate jdbcTemplate, ProjectRepository projectRepository,
+                             ProjectMemberRepository projectMemberRepository,
                              EmployeeProfileRepository employeeRepository, KpiRecordRepository kpiRepository,
                              UserRepository userRepository, WorkspaceMemberRepository memberRepository,
                              ProjectProgressCalculator progressCalculator) {
         this.jdbcTemplate = jdbcTemplate;
         this.projectRepository = projectRepository;
+        this.projectMemberRepository = projectMemberRepository;
         this.employeeRepository = employeeRepository;
         this.kpiRepository = kpiRepository;
         this.userRepository = userRepository;
@@ -58,6 +64,17 @@ public class DashboardService {
         List<ProjectEntity> projects = projectRepository.findAllByWorkspaceId(workspaceId);
         int totalProjects = projects.size();
         long activeProjects = projects.stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count();
+
+        // A person's "involved" projects are the ones they manage OR are a team member on -
+        // matches the richer definition EmployeeService already uses for its project chips,
+        // rather than counting only the single project manager (which undercounts everyone else).
+        Map<Long, Set<Long>> memberProjectIdsByUser = new LinkedHashMap<>();
+        List<Long> projectIds = projects.stream().map(ProjectEntity::getId).toList();
+        if (!projectIds.isEmpty()) {
+            for (var member : projectMemberRepository.findAllByIdProjectIdIn(projectIds)) {
+                memberProjectIdsByUser.computeIfAbsent(member.getUserId(), id -> new HashSet<>()).add(member.getProjectId());
+            }
+        }
 
         int totalTasks = count("SELECT COUNT(*) FROM tasks WHERE workspace_id = ? AND deleted_at IS NULL", workspaceId);
         int completedTasks = count("SELECT COUNT(*) FROM tasks WHERE workspace_id = ? AND deleted_at IS NULL " +
@@ -91,14 +108,14 @@ public class DashboardService {
                     int completed = count("SELECT COUNT(*) FROM task_assignees a JOIN tasks t ON t.id = a.task_id " +
                             "WHERE a.user_id = ? AND t.workspace_id = ? AND t.deleted_at IS NULL AND t.status = 'COMPLETED'",
                             emp.getUserId(), workspaceId);
-                    long projectCount = projectRepository.countByWorkspaceIdAndManagerId(workspaceId, emp.getUserId());
+                    int projectCount = involvedProjectCount(projects, memberProjectIdsByUser, emp.getUserId());
                     return new TopEmployeeDto(emp.getId(), user == null ? "Foydalanuvchi" : displayName(user),
                             user == null ? null : user.getPhotoUrl(), emp.getPosition(), emp.getDepartment(),
-                            kpiScoreByUser.getOrDefault(emp.getUserId(), 0), completed, (int) projectCount);
+                            kpiScoreByUser.getOrDefault(emp.getUserId(), 0), completed, projectCount);
                 })
                 .orElse(null);
 
-        List<TeamLoadDto> teamLoad = buildTeamLoad(workspaceId, employees);
+        List<TeamLoadDto> teamLoad = buildTeamLoad(workspaceId, employees, projects, memberProjectIdsByUser);
 
         List<ProjectEntity> recentProjects = projects.stream()
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
@@ -126,7 +143,8 @@ public class DashboardService {
      *  ta'sir") - e.g. the single busiest person on active tasks scores the full 70 on that
      *  component even with just 1 active task, if nobody else has any. An employee with zero
      *  active/overdue/projects scores flat 0 rather than an undefined ratio. */
-    private List<TeamLoadDto> buildTeamLoad(Long workspaceId, List<EmployeeProfileEntity> employees) {
+    private List<TeamLoadDto> buildTeamLoad(Long workspaceId, List<EmployeeProfileEntity> employees,
+                                             List<ProjectEntity> projects, Map<Long, Set<Long>> memberProjectIdsByUser) {
         record RawLoad(EmployeeProfileEntity emp, UserEntity user, int activeTasks, int overdueTasks, int projectCount) {}
 
         List<RawLoad> raw = new ArrayList<>();
@@ -140,7 +158,7 @@ public class DashboardService {
                     "WHERE a.user_id = ? AND t.workspace_id = ? AND t.deleted_at IS NULL " +
                     "AND t.status NOT IN ('COMPLETED','CANCELLED') AND t.due_at IS NOT NULL AND t.due_at < now()",
                     userId, workspaceId);
-            int projectCount = (int) projectRepository.countByWorkspaceIdAndManagerId(workspaceId, userId);
+            int projectCount = involvedProjectCount(projects, memberProjectIdsByUser, userId);
             raw.add(new RawLoad(emp, user, activeTasks, overdueTasks, projectCount));
         }
 
@@ -161,6 +179,15 @@ public class DashboardService {
         result.sort((a, b) -> b.load() != a.load() ? Integer.compare(b.load(), a.load())
                 : Integer.compare(b.activeTasks(), a.activeTasks()));
         return result;
+    }
+
+    /** Projects this user is either the manager of or a team member on (union, no double count) -
+     *  counting managed-only projects undercounts everyone who isn't the single project manager. */
+    private int involvedProjectCount(List<ProjectEntity> projects, Map<Long, Set<Long>> memberProjectIdsByUser, Long userId) {
+        Set<Long> memberProjectIds = memberProjectIdsByUser.getOrDefault(userId, Set.of());
+        return (int) projects.stream()
+                .filter(p -> p.getManagerId().equals(userId) || memberProjectIds.contains(p.getId()))
+                .count();
     }
 
     /** Ported from the reference CRM's healthScore(): a workspace-wide task-health score, distinct

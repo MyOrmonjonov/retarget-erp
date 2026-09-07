@@ -16,6 +16,4 @@ public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
     long countByWorkspaceId(Long workspaceId);
 
     long countByWorkspaceIdAndStatus(Long workspaceId, ProjectStatus status);
-
-    long countByWorkspaceIdAndManagerId(Long workspaceId, Long managerId);
 }

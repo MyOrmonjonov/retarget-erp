@@ -125,17 +125,19 @@ public class EmployeeService {
                 .map(kpi -> kpi.getScore())
                 .orElse(null);
 
-        long projectCount = projectRepository.countByWorkspaceIdAndManagerId(workspaceId, profile.getUserId());
         List<ProjectEntity> workspaceProjects = projectRepository.findAllByWorkspaceId(workspaceId);
         java.util.Set<Long> memberProjectIds = projectMemberRepository
                 .findAllByIdProjectIdIn(workspaceProjects.stream().map(ProjectEntity::getId).toList()).stream()
                 .filter(m -> m.getUserId().equals(profile.getUserId()))
                 .map(m -> m.getProjectId())
                 .collect(java.util.stream.Collectors.toSet());
-        List<String> projectNames = workspaceProjects.stream()
+        List<ProjectEntity> involvedProjects = workspaceProjects.stream()
                 .filter(p -> p.getManagerId().equals(profile.getUserId()) || memberProjectIds.contains(p.getId()))
-                .map(ProjectEntity::getName)
                 .toList();
+        // "involved" = manager OR team member (union) - counting managed-only projects undercounts
+        // everyone who isn't the single project manager, see DashboardService's matching fix.
+        long projectCount = involvedProjects.size();
+        List<String> projectNames = involvedProjects.stream().map(ProjectEntity::getName).toList();
 
         List<Long> taskIds = taskAssigneeRepository.findAllByIdUserId(profile.getUserId()).stream()
                 .map(a -> a.getTaskId())
