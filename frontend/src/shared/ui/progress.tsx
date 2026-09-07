@@ -10,7 +10,7 @@ const Progress = React.forwardRef<
     variant?: 'default' | 'success' | 'warning' | 'error' | 'accent' | 'info';
     size?: 'sm' | 'md' | 'lg';
   }
->(({ className, variant = 'default', size = 'md', ...props }, ref) => {
+>(({ className, value = 0, max = 100, variant = 'default', size = 'md', ...props }, ref) => {
   const variants = {
     default: 'bg-[var(--color-accent)]',
     success: 'bg-[var(--color-success)]',
@@ -26,9 +26,13 @@ const Progress = React.forwardRef<
     lg: 'h-3',
   };
 
+  const percentage = max > 0 ? Math.min(100, Math.max(0, ((value ?? 0) / max) * 100)) : 0;
+
   return (
     <ProgressPrimitive.Root
       ref={ref}
+      value={value}
+      max={max}
       className={cn(
         'relative w-full overflow-hidden rounded-full bg-[var(--color-bg-border)]',
         sizes[size],
@@ -38,9 +42,10 @@ const Progress = React.forwardRef<
     >
       <ProgressPrimitive.Indicator
         className={cn(
-          'h-full w-0 flex-1 transition-all duration-300 ease-out rounded-full',
+          'h-full w-full flex-1 transition-all duration-300 ease-out rounded-full',
           variants[variant]
         )}
+        style={{ transform: `translateX(-${100 - percentage}%)` }}
       />
     </ProgressPrimitive.Root>
   );
