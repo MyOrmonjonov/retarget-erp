@@ -319,6 +319,8 @@ export function TasksPage() {
           tasks={filteredTasks}
           onTaskMove={handleMove}
           onTaskClick={handleOpenEditForm}
+          onChangeStatus={handleMove}
+          onDeleteTask={(task) => handleOpenDelete(task as TaskListItem)}
         />
       ) : (
         <div className="space-y-6">
