@@ -67,6 +67,9 @@ interface TaskFormProps {
   /** Optional project picker - omitted entirely when not passed (e.g. from a project's own
    * detail page, where the link is implied). */
   projects?: SelectOption[];
+  /** Status to pre-select when creating a new task (e.g. "+" clicked on a specific Kanban
+   * column) - ignored when editing an existing task, which always uses its own status. */
+  defaultStatus?: TaskStatus;
 }
 
 const DESIGN_FORMAT_OPTIONS: SelectOption[] = [
@@ -112,13 +115,13 @@ const REMINDER_OPTIONS = [
   { value: '1440', label: '1 kun oldin' },
 ];
 
-function emptyForm(): TaskFormData {
+function emptyForm(defaultStatus: TaskStatus = 'TODO'): TaskFormData {
   return {
     title: '',
     description: '',
     assigneeIds: [],
     priority: 'MEDIUM',
-    status: 'TODO',
+    status: defaultStatus,
     dueDate: '',
     checklist: [],
     reminderMinutes: undefined,
@@ -132,7 +135,7 @@ function emptyForm(): TaskFormData {
 }
 
 export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, assignees = [], groups = [],
-                          showDesignFields = false, projects }: TaskFormProps) {
+                          showDesignFields = false, projects, defaultStatus }: TaskFormProps) {
   const isEdit = !!initialData;
   const [form, setForm] = useState<TaskFormData>(emptyForm());
   const [checklistDraft, setChecklistDraft] = useState('');
@@ -163,12 +166,12 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
         projectId: initialData.projectId || undefined,
       });
     } else {
-      setForm(emptyForm());
+      setForm(emptyForm(defaultStatus));
     }
     setChecklistDraft('');
     setTitleError(undefined);
     setDueDateError(undefined);
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, defaultStatus]);
 
   const toggleAssignee = (id: string) => {
     setForm((f) => ({

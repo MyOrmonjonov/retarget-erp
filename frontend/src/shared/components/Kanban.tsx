@@ -7,7 +7,8 @@ import {
   DragOverlay,
   closestCorners,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -19,6 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Plus } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
@@ -37,10 +39,11 @@ interface KanbanColumnProps {
   column: KanbanColumn;
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
+  onAddTask?: (status: TaskStatus) => void;
   isLoading?: boolean;
 }
 
-function KanbanColumnComponent({ column, tasks, onTaskClick, isLoading }: KanbanColumnProps) {
+function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, isLoading }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
@@ -56,11 +59,23 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, isLoading }: Kanban
         >
           {column.title} ({tasks.length})
         </h3>
-        {column.limit && tasks.length >= column.limit && (
-          <Badge variant="warning" size="sm">
-            Limit
-          </Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {column.limit && tasks.length >= column.limit && (
+            <Badge variant="warning" size="sm">
+              Limit
+            </Badge>
+          )}
+          {onAddTask && (
+            <button
+              type="button"
+              onClick={() => onAddTask(column.status)}
+              aria-label={`${column.title}ga vazifa qo'shish`}
+              className="flex items-center justify-center h-5 w-5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface)] transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tasks List - also the column's drop zone, so dropping on empty space (not just on
@@ -191,15 +206,25 @@ interface KanbanBoardProps {
   tasks: Task[];
   onTaskMove: (taskId: string, newStatus: TaskStatus) => void;
   onTaskClick?: (task: Task) => void;
+  onAddTask?: (status: TaskStatus) => void;
   isLoading?: boolean;
   className?: string;
 }
 
-export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading, className }: KanbanBoardProps) {
+export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask, isLoading, className }: KanbanBoardProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    // Mouse gets an immediate distance-based drag; touch gets a short hold delay instead, so a
+    // quick swipe on a card scrolls the board horizontally (to reach the last columns) rather
+    // than always being captured as a drag attempt.
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -261,7 +286,7 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading
       onDragEnd={handleDragEnd}
     >
       <div
-        className={cn('flex gap-4 overflow-x-auto pb-4', className)}
+        className={cn('flex gap-4 overflow-x-auto pb-4 touch-pan-x', className)}
         role="region"
         aria-label="Kanban doskasi"
       >
@@ -271,6 +296,7 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading
             column={column}
             tasks={tasksByColumn[column.id] || []}
             onTaskClick={onTaskClick}
+            onAddTask={onAddTask}
             isLoading={isLoading}
           />
         ))}
