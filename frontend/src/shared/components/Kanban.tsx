@@ -59,23 +59,11 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, isLoadin
         >
           {column.title} ({tasks.length})
         </h3>
-        <div className="flex items-center gap-1.5">
-          {column.limit && tasks.length >= column.limit && (
-            <Badge variant="warning" size="sm">
-              Limit
-            </Badge>
-          )}
-          {onAddTask && (
-            <button
-              type="button"
-              onClick={() => onAddTask(column.status)}
-              aria-label={`${column.title}ga vazifa qo'shish`}
-              className="flex items-center justify-center h-5 w-5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface)] transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        {column.limit && tasks.length >= column.limit && (
+          <Badge variant="warning" size="sm">
+            Limit
+          </Badge>
+        )}
       </div>
 
       {/* Tasks List - also the column's drop zone, so dropping on empty space (not just on
@@ -110,6 +98,18 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, isLoadin
                 <div key={i} className="h-24 bg-[var(--color-bg-border)]/50 rounded-lg animate-pulse" />
               ))}
             </div>
+          )}
+
+          {onAddTask && !isLoading && (
+            <button
+              type="button"
+              onClick={() => onAddTask(column.status)}
+              className="flex items-center justify-center gap-1.5 w-full h-10 rounded-lg border-2 border-dashed text-caption font-semibold transition-colors hover:bg-[var(--color-bg-surface)]"
+              style={{ borderColor: `${column.color}66`, color: column.color }}
+            >
+              <Plus className="h-4 w-4" />
+              Vazifa qo'shish
+            </button>
           )}
         </div>
       </SortableContext>
