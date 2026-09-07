@@ -28,7 +28,9 @@ import { tasksApi, type TaskDetail } from '@/features/tasks/api/tasksApi';
 import { TaskForm, type TaskFormData as TaskFormValues } from '@/features/tasks/components/TaskForm';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
 import { useContentPlan } from '../hooks/useContentPlan';
+import { useProjectMonths, useUpsertProjectMonth, useDeleteProjectMonth } from '../hooks/useProjectMonths';
 import { ContentPlanTab } from '../components/ContentPlanTab';
+import { Archive, CheckCircle2, Pencil, Trash2, Check, X } from 'lucide-react';
 
 const UZ_MONTHS = [
   'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
@@ -54,6 +56,9 @@ export function ProjectDetailPage() {
   const { data: allTasks = [], isLoading: tasksLoading } = useTasks();
   const { data: employees = [] } = useEmployees();
   const { data: contentItems = [] } = useContentPlan(id ?? '');
+  const { data: persistedMonths = [] } = useProjectMonths(id ?? '');
+  const upsertMonth = useUpsertProjectMonth(id ?? '');
+  const deleteMonth = useDeleteProjectMonth(id ?? '');
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const changeStatus = useChangeTaskStatus();
@@ -65,6 +70,7 @@ export function ProjectDetailPage() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [isTaskFormLoading, setIsTaskFormLoading] = useState(false);
+  const [createDefaultStatus, setCreateDefaultStatus] = useState<TaskStatus | undefined>();
 
   const byUserId = useMemo(() => new Map(employees.map((e) => [e.userId, e])), [employees]);
   const projectTasks = useMemo(() => {
@@ -82,24 +88,58 @@ export function ProjectDetailPage() {
   const currentMonth = useMemo(() => monthKey(new Date().toISOString()), []);
   const [activeMonth, setActiveMonth] = useState(currentMonth);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
-  /** Months added via "+ Yangi oy" before any task/content item exists in them yet - months
-   *  aren't a real backend entity (just a due-date grouping), so this is purely local state
-   *  to let a user open an empty future month ahead of adding anything to it. */
-  const [extraMonths, setExtraMonths] = useState<string[]>([]);
+  const [isRenamingMonth, setIsRenamingMonth] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+
+  const monthMetaByKey = useMemo(
+    () => new Map(persistedMonths.map((m) => [m.monthKey, m])),
+    [persistedMonths]
+  );
 
   const availableMonths = useMemo(() => {
     const keys = new Set(projectTasks.map((t) => monthKey(t.dueDate)));
     contentItems.forEach((c) => keys.add(monthKey(c.date)));
-    extraMonths.forEach((m) => keys.add(m));
+    persistedMonths.forEach((m) => keys.add(m.monthKey));
     keys.add(currentMonth);
     return Array.from(keys).sort().reverse();
-  }, [projectTasks, contentItems, extraMonths, currentMonth]);
+  }, [projectTasks, contentItems, persistedMonths, currentMonth]);
+
+  const monthDisplayLabel = useCallback(
+    (key: string) => monthMetaByKey.get(key)?.displayName || monthLabel(key),
+    [monthMetaByKey]
+  );
+
+  const activeMonthMeta = monthMetaByKey.get(activeMonth);
 
   const handleAddNextMonth = useCallback(() => {
     const [latestYear, latestMonth] = availableMonths[0].split('-').map(Number);
     const next = new Date(latestYear, latestMonth, 1); // JS months are 0-based, so this is +1
-    setExtraMonths((prev) => [...prev, monthKey(next.toISOString())]);
-  }, [availableMonths]);
+    const nextKey = monthKey(next.toISOString());
+    upsertMonth.mutate({ monthKey: nextKey }, { onSuccess: () => setActiveMonth(nextKey) });
+  }, [availableMonths, upsertMonth]);
+
+  const handleStartRename = useCallback(() => {
+    setRenameValue(monthDisplayLabel(activeMonth));
+    setIsRenamingMonth(true);
+  }, [activeMonth, monthDisplayLabel]);
+
+  const handleConfirmRename = useCallback(() => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== monthLabel(activeMonth)) {
+      upsertMonth.mutate({ monthKey: activeMonth, data: { displayName: trimmed } });
+    }
+    setIsRenamingMonth(false);
+  }, [activeMonth, renameValue, upsertMonth]);
+
+  const handleToggleArchive = useCallback(() => {
+    const nextStatus = activeMonthMeta?.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED';
+    upsertMonth.mutate({ monthKey: activeMonth, data: { status: nextStatus } });
+  }, [activeMonth, activeMonthMeta, upsertMonth]);
+
+  const handleDeleteMonth = useCallback(() => {
+    if (!activeMonthMeta) return;
+    deleteMonth.mutate(activeMonth);
+  }, [activeMonth, activeMonthMeta, deleteMonth]);
 
   const monthTasks = useMemo(
     () => projectTasks.filter((t) => monthKey(t.dueDate) === activeMonth),
@@ -125,7 +165,8 @@ export function ProjectDetailPage() {
     changeStatus.mutate({ id: taskId, status: newStatus });
   }, [changeStatus]);
 
-  const handleOpenCreateTask = useCallback(() => {
+  const handleOpenCreateTask = useCallback((status?: TaskStatus) => {
+    setCreateDefaultStatus(status);
     setEditingTask(null);
     setIsTaskFormOpen(true);
   }, []);
@@ -146,6 +187,7 @@ export function ProjectDetailPage() {
   const handleCloseTaskForm = useCallback(() => {
     setIsTaskFormOpen(false);
     setEditingTask(null);
+    setCreateDefaultStatus(undefined);
   }, []);
 
   const handleTaskFormSubmit = useCallback(async (data: TaskFormValues) => {
@@ -280,14 +322,44 @@ export function ProjectDetailPage() {
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <FilterPills
-          options={availableMonths.map((m) => ({ value: m, label: monthLabel(m) }))}
+          options={availableMonths.map((m) => ({ value: m, label: monthDisplayLabel(m) }))}
           value={activeMonth}
           onChange={setActiveMonth}
         />
-        <Button variant="accent" size="sm" onClick={handleAddNextMonth}>
-          <Plus className="h-4 w-4" />
-          Yangi oy
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="accent" size="sm" onClick={handleAddNextMonth}>
+            <Plus className="h-4 w-4" />
+            Yangi oy
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleStartRename}>
+            <Pencil className="h-3.5 w-3.5" />
+            Nomlash
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleToggleArchive}>
+            {activeMonthMeta?.status === 'ARCHIVED' ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Faol qilish
+              </>
+            ) : (
+              <>
+                <Archive className="h-3.5 w-3.5" />
+                Arxivlash
+              </>
+            )}
+          </Button>
+          {activeMonthMeta && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDeleteMonth}
+              className="bg-[var(--color-error-muted)] text-[var(--color-error)] hover:bg-[var(--color-error-muted)]"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              O'chirish
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="tasks">
@@ -302,7 +374,31 @@ export function ProjectDetailPage() {
                 caption={monthStats.total > 0 ? `${monthStats.done}/${monthStats.total}` : undefined}
               />
               <div className="min-w-0">
-                <p className="font-bold text-[var(--color-text-primary)]">{monthLabel(activeMonth)}</p>
+                {isRenamingMonth ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleConfirmRename();
+                        if (e.key === 'Escape') setIsRenamingMonth(false);
+                      }}
+                      className="font-bold text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-accent)] focus:outline-none min-w-0 max-w-[180px]"
+                    />
+                    <button type="button" onClick={handleConfirmRename} aria-label="Saqlash" className="text-[var(--color-success)]">
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={() => setIsRenamingMonth(false)} aria-label="Bekor qilish" className="text-[var(--color-text-muted)]">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-[var(--color-text-primary)] truncate">{monthDisplayLabel(activeMonth)}</p>
+                    {activeMonthMeta?.status === 'ARCHIVED' && <Badge size="sm">Arxiv</Badge>}
+                  </div>
+                )}
                 <TabsList className="mt-1.5">
                   <TabsTrigger value="tasks">Topshiriqlar</TabsTrigger>
                   <TabsTrigger value="content-plan">Kontent reja</TabsTrigger>
@@ -348,7 +444,7 @@ export function ProjectDetailPage() {
                   <List className="h-4 w-4" /> Ro'yxat
                 </button>
               </div>
-              <Button variant="primary" onClick={handleOpenCreateTask}>
+              <Button variant="primary" onClick={() => handleOpenCreateTask()}>
                 <Plus className="h-4 w-4" />
                 Yangi vazifa
               </Button>
@@ -363,10 +459,11 @@ export function ProjectDetailPage() {
                 tasks={monthTasks}
                 onTaskMove={handleMove}
                 onTaskClick={handleOpenEditTask}
+                onAddTask={handleOpenCreateTask}
               />
             ) : monthTasks.length === 0 ? (
               <Card>
-                <EmptyState icon={CheckSquare} title="Vazifa topilmadi" description={`${monthLabel(activeMonth)} uchun vazifa yo'q.`} />
+                <EmptyState icon={CheckSquare} title="Vazifa topilmadi" description={`${monthDisplayLabel(activeMonth)} uchun vazifa yo'q.`} />
               </Card>
             ) : (
               <div className="space-y-2">
@@ -402,6 +499,7 @@ export function ProjectDetailPage() {
         onClose={handleCloseTaskForm}
         onSubmit={handleTaskFormSubmit}
         initialData={editingTask}
+        defaultStatus={createDefaultStatus}
         isLoading={isTaskFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
       />
