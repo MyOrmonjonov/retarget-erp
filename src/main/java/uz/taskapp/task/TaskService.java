@@ -11,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uz.taskapp.common.ApiException;
 import uz.taskapp.config.AppProperties;
+import uz.taskapp.employee.EmployeeProfileEntity;
+import uz.taskapp.employee.EmployeeProfileRepository;
+import uz.taskapp.employee.OrgRole;
 import uz.taskapp.group.GroupEntity;
 import uz.taskapp.group.GroupMemberId;
 import uz.taskapp.group.GroupMemberRepository;
@@ -60,6 +63,7 @@ public class TaskService {
     private final TaskAssigneeRepository assigneeRepository;
     private final TaskFileRepository fileRepository;
     private final WorkspaceMemberRepository memberRepository;
+    private final EmployeeProfileRepository employeeRepository;
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -76,6 +80,7 @@ public class TaskService {
                        TaskAssigneeRepository assigneeRepository,
                        TaskFileRepository fileRepository,
                        WorkspaceMemberRepository memberRepository,
+                       EmployeeProfileRepository employeeRepository,
                        UserRepository userRepository,
                        GroupRepository groupRepository,
                        GroupMemberRepository groupMemberRepository,
@@ -90,6 +95,7 @@ public class TaskService {
         this.assigneeRepository = assigneeRepository;
         this.fileRepository = fileRepository;
         this.memberRepository = memberRepository;
+        this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
@@ -264,7 +270,8 @@ public class TaskService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "Vazifa topilmadi"));
         requireMembership(task.getWorkspaceId(), currentUserId);
         boolean canChange = task.getAuthorId().equals(currentUserId)
-                || assigneeRepository.existsByIdTaskIdAndIdUserId(taskId, currentUserId);
+                || assigneeRepository.existsByIdTaskIdAndIdUserId(taskId, currentUserId)
+                || isCeo(task.getWorkspaceId(), currentUserId);
         if (!canChange) {
             throw new ApiException(HttpStatus.FORBIDDEN, "TASK_UPDATE_FORBIDDEN", "Vazifa statusini o'zgartirishga ruxsat yo'q");
         }
@@ -630,6 +637,18 @@ public class TaskService {
     private boolean isWorkspaceOwner(Long workspaceId, Long userId) {
         return memberRepository.findByWorkspaceIdAndUserIdAndActiveTrue(workspaceId, userId)
                 .map(member -> "OWNER".equals(member.getRoleCode()))
+                .orElse(false);
+    }
+
+    /** CEO (the workspace OWNER, or a member with the CEO org role) can act on any task in the
+     *  workspace regardless of authorship/assignment - everyone else is limited to their own. */
+    private boolean isCeo(Long workspaceId, Long userId) {
+        if (isWorkspaceOwner(workspaceId, userId)) {
+            return true;
+        }
+        return employeeRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+                .map(EmployeeProfileEntity::getOrgRole)
+                .map(role -> role == OrgRole.CEO)
                 .orElse(false);
     }
 

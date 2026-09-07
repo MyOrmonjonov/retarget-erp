@@ -1,122 +1,112 @@
 'use client';
 
 import * as React from 'react';
-import type {
-  DragEndEvent} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
   DndContext,
-  closestCenter,
+  DragOverlay,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors
+  useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
+  useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import type { Task, TaskStatus, KanbanColumn } from '@/shared/types';
 import { formatShortDate } from '@/shared/lib/utils';
+import { useUser } from '@/features/auth/store/authStore';
+
+/** CEO can drag any card; everyone else can only move tasks assigned to them. */
+function useCanDragTask(task: Task): boolean {
+  const user = useUser();
+  if (!user) return false;
+  return user.role === 'CEO' || task.assigneeId === user.id;
+}
 
 interface KanbanColumnProps {
   column: KanbanColumn;
   tasks: Task[];
-  onTaskMove: (taskId: string, newStatus: TaskStatus) => void;
   onTaskClick?: (task: Task) => void;
   isLoading?: boolean;
 }
 
-function KanbanColumnComponent({ column, tasks, onTaskMove, onTaskClick, isLoading }: KanbanColumnProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const taskId = active.id as string;
-      onTaskMove(taskId, column.status);
-    }
-  };
+function KanbanColumnComponent({ column, tasks, onTaskClick, isLoading }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="flex flex-col min-w-[300px] max-w-[300px] flex-shrink-0">
-          {/* Column Header */}
-          <div className="flex items-center justify-between px-3 py-2.5">
-            <h3
-              className="text-caption font-semibold uppercase tracking-wider"
-              style={{ color: column.color }}
+    <div className="flex flex-col min-w-[300px] max-w-[300px] flex-shrink-0">
+      {/* Column Header */}
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <h3
+          className="text-caption font-semibold uppercase tracking-wider"
+          style={{ color: column.color }}
+        >
+          {column.title} ({tasks.length})
+        </h3>
+        {column.limit && tasks.length >= column.limit && (
+          <Badge variant="warning" size="sm">
+            Limit
+          </Badge>
+        )}
+      </div>
+
+      {/* Tasks List - also the column's drop zone, so dropping on empty space (not just on
+          another card) still resolves to this column */}
+      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <div
+          ref={setNodeRef}
+          className={cn(
+            'flex-1 overflow-y-auto space-y-2 px-2 pb-4 pr-3 rounded-lg transition-colors',
+            isOver && 'bg-[var(--color-accent-muted)]/40'
+          )}
+          role="list"
+          aria-label={`${column.title} vazifalari`}
+        >
+          {tasks.map((task) => (
+            <KanbanTaskCard key={task.id} task={task} onClick={onTaskClick ? () => onTaskClick(task) : undefined} />
+          ))}
+
+          {/* Empty State / Drop Zone */}
+          {tasks.length === 0 && !isLoading && (
+            <div
+              className="h-24 border-2 border-dashed border-[var(--color-bg-border)] rounded-lg flex items-center justify-center text-caption text-[var(--color-text-muted)] transition-colors"
+              data-placeholder="true"
             >
-              {column.title} ({tasks.length})
-            </h3>
-            {column.limit && tasks.length >= column.limit && (
-              <Badge variant="warning" size="sm">
-                Limit
-              </Badge>
-            )}
-          </div>
+              Vazifalar yo'q
+            </div>
+          )}
 
-          {/* Tasks List */}
-          <div
-            className="flex-1 overflow-y-auto space-y-2 px-2 pb-4 pr-3"
-            role="list"
-            aria-label={`${column.title} vazifalari`}
-          >
-            {tasks.map((task) => (
-              <KanbanTaskCard key={task.id} task={task} onClick={onTaskClick ? () => onTaskClick(task) : undefined} />
-            ))}
-
-            {/* Empty State / Drop Zone */}
-            {tasks.length === 0 && (
-              <div
-                className="h-24 border-2 border-dashed border-[var(--color-bg-border)] rounded-lg flex items-center justify-center text-caption text-[var(--color-text-muted)] transition-colors"
-                data-placeholder="true"
-              >
-                Vazifalar yo'q
-              </div>
-            )}
-
-            {isLoading && (
-              <div className="space-y-2" aria-busy="true">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-[var(--color-bg-border)]/50 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            )}
-          </div>
+          {isLoading && (
+            <div className="space-y-2" aria-busy="true">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-[var(--color-bg-border)]/50 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          )}
         </div>
       </SortableContext>
-    </DndContext>
+    </div>
   );
 }
 
 interface KanbanTaskCardProps {
   task: Task;
   onClick?: () => void;
+  isDragging?: boolean;
+  canDrag?: boolean;
 }
 
-function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
+function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true }: KanbanTaskCardProps) {
   const category = task.tags?.[0];
   const hasProgress = !!task.estimatedHours && task.loggedHours !== undefined;
   const progressPct = hasProgress
@@ -124,46 +114,71 @@ function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
     : 0;
 
   return (
-    <div>
-      <div
-        className={cn(
-          'group relative bg-[var(--color-bg-surface)] border border-[var(--color-bg-border)] rounded-lg p-3 transition-all duration-200',
-          'hover:shadow-lg hover:border-[var(--color-text-muted)]',
-          onClick && 'cursor-pointer',
-          'active:cursor-grabbing'
-        )}
-        role="listitem"
-        aria-label={task.title}
-        onClick={onClick}
-      >
-        {/* Category badge */}
-        {category && (
-          <Badge variant="accent" size="sm" className="mb-2">
-            {category}
-          </Badge>
-        )}
+    <div
+      className={cn(
+        'group relative bg-[var(--color-bg-surface)] border border-[var(--color-bg-border)] rounded-lg p-3 transition-all duration-200',
+        'hover:shadow-lg hover:border-[var(--color-text-muted)]',
+        onClick && 'cursor-pointer',
+        canDrag && 'cursor-grab active:cursor-grabbing',
+        isDragging && 'shadow-xl'
+      )}
+      role="listitem"
+      aria-label={task.title}
+      onClick={onClick}
+    >
+      {/* Category badge */}
+      {category && (
+        <Badge variant="accent" size="sm" className="mb-2">
+          {category}
+        </Badge>
+      )}
 
-        {/* Title */}
-        <h4 className="text-body font-medium text-[var(--color-text-primary)] line-clamp-2 mb-2 pr-4">
-          {task.title}
-        </h4>
+      {/* Title */}
+      <h4 className="text-body font-medium text-[var(--color-text-primary)] line-clamp-2 mb-2 pr-4">
+        {task.title}
+      </h4>
 
-        {hasProgress && (
-          <div className="h-1 bg-[var(--color-bg-border)] rounded-full overflow-hidden mb-3">
-            <div className="h-full bg-[var(--color-accent)]" style={{ width: `${progressPct}%` }} />
-          </div>
-        )}
-        {!hasProgress && <div className="mb-1" />}
-
-        {/* Meta Info */}
-        <div className="flex items-center justify-between text-caption text-[var(--color-text-secondary)]">
-          <span className="flex items-center gap-1.5">
-            <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
-            {task.assigneeName}
-          </span>
-          {task.dueDate && <span>{formatShortDate(task.dueDate)}</span>}
+      {hasProgress && (
+        <div className="h-1 bg-[var(--color-bg-border)] rounded-full overflow-hidden mb-3">
+          <div className="h-full bg-[var(--color-accent)]" style={{ width: `${progressPct}%` }} />
         </div>
+      )}
+      {!hasProgress && <div className="mb-1" />}
+
+      {/* Meta Info */}
+      <div className="flex items-center justify-between text-caption text-[var(--color-text-secondary)]">
+        <span className="flex items-center gap-1.5">
+          <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
+          {task.assigneeName}
+        </span>
+        {task.dueDate && <span>{formatShortDate(task.dueDate)}</span>}
       </div>
+    </div>
+  );
+}
+
+function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
+  const canDrag = useCanDragTask(task);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    disabled: !canDrag,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      title={canDrag ? undefined : "Faqat o'zingizga tegishli vazifalarni ko'chirish mumkin"}
+      {...attributes}
+      {...listeners}
+    >
+      <KanbanTaskCardBody task={task} onClick={onClick} canDrag={canDrag} />
     </div>
   );
 }
@@ -178,6 +193,19 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading, className }: KanbanBoardProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const [activeTask, setActiveTask] = React.useState<Task | null>(null);
+
   const tasksByColumn = React.useMemo(() => {
     const grouped: Record<string, Task[]> = {};
     columns.forEach((col) => {
@@ -186,23 +214,72 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, isLoading
     return grouped;
   }, [columns, tasks]);
 
+  // Maps every visible task id to the id of the column it's currently rendered in, so a drop
+  // landing on another task (rather than empty column space) can still resolve its column.
+  const taskColumnId = React.useMemo(() => {
+    const map = new Map<string, string>();
+    columns.forEach((col) => {
+      tasksByColumn[col.id].forEach((t) => map.set(String(t.id), col.id));
+    });
+    return map;
+  }, [columns, tasksByColumn]);
+
+  const columnIds = React.useMemo(() => new Set(columns.map((c) => c.id)), [columns]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = tasks.find((t) => t.id === event.active.id);
+    setActiveTask(task ?? null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = String(active.id);
+    const overId = String(over.id);
+    const targetColumnId = columnIds.has(overId) ? overId : taskColumnId.get(overId);
+    if (!targetColumnId) return;
+
+    const targetColumn = columns.find((c) => c.id === targetColumnId);
+    if (!targetColumn) return;
+
+    const currentColumnId = taskColumnId.get(taskId);
+    if (currentColumnId === targetColumnId) return;
+
+    onTaskMove(taskId, targetColumn.status);
+  };
+
   return (
-    <div
-      className={cn('flex gap-4 overflow-x-auto pb-4', className)}
-      role="region"
-      aria-label="Kanban doskasi"
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
-      {columns.map((column) => (
-        <KanbanColumnComponent
-          key={column.id}
-          column={column}
-          tasks={tasksByColumn[column.id] || []}
-          onTaskMove={onTaskMove}
-          onTaskClick={onTaskClick}
-          isLoading={isLoading}
-        />
-      ))}
-    </div>
+      <div
+        className={cn('flex gap-4 overflow-x-auto pb-4', className)}
+        role="region"
+        aria-label="Kanban doskasi"
+      >
+        {columns.map((column) => (
+          <KanbanColumnComponent
+            key={column.id}
+            column={column}
+            tasks={tasksByColumn[column.id] || []}
+            onTaskClick={onTaskClick}
+            isLoading={isLoading}
+          />
+        ))}
+      </div>
+      <DragOverlay>
+        {activeTask && (
+          <div className="max-w-[284px]">
+            <KanbanTaskCardBody task={activeTask} isDragging />
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 }
 
