@@ -4,13 +4,12 @@ import { useMemo, useState, useCallback } from 'react';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { FilterPills } from '@/shared/components/FilterPills';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { Plus, Search, Trash2, Check, ListChecks, Paperclip, List, LayoutGrid, CheckSquare } from 'lucide-react';
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/shared/types';
+import { Plus, Search, Check, ListChecks, Paperclip, List, LayoutGrid, CheckSquare } from 'lucide-react';
+import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/shared/types';
 import type { Task, TaskPriority, TaskStatus } from '@/shared/types';
 import { KanbanBoard, TARGET_COLUMNS } from '@/shared/components/Kanban';
 import { TaskForm, type TaskFormData } from '../components/TaskForm';
@@ -42,6 +41,37 @@ const priorityTextColor: Record<TaskPriority, string> = {
   URGENT: 'text-[var(--color-error)]',
 };
 
+// Matches the Kanban board's own per-status colors (Kanban.tsx's TARGET_COLUMNS) so a task's
+// status reads the same color everywhere in the app, not just here.
+const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
+  BACKLOG: '#6B7280',
+  TODO: '#6B7280',
+  IN_PROGRESS: '#0071E3',
+  EDITING: '#5856D6',
+  REVIEW: '#FF9F0A',
+  DONE: '#34C759',
+  BLOCKED: '#FF3B30',
+};
+
+const STATUS_SELECT_OPTIONS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'EDITING', 'REVIEW', 'DONE', 'BLOCKED'];
+
+function InlineTaskStatusSelect({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void }) {
+  const color = TASK_STATUS_COLOR[status];
+  return (
+    <select
+      value={status}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value as TaskStatus)}
+      className="text-caption font-bold rounded-full pl-3 pr-1.5 py-1 border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+      style={{ backgroundColor: `${color}1F`, borderColor: `${color}55`, color }}
+    >
+      {STATUS_SELECT_OPTIONS.map((s) => (
+        <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
+      ))}
+    </select>
+  );
+}
+
 function isSameDay(dateStr: string, ref: Date) {
   const d = new Date(dateStr);
   return d.toDateString() === ref.toDateString();
@@ -49,56 +79,78 @@ function isSameDay(dateStr: string, ref: Date) {
 
 type FilterValue = 'FAOL' | 'MENIKI' | 'BUGUN' | 'MUDDATI_OTGAN';
 
-function TaskRow({ task, onEdit, onComplete, onDelete }: { task: TaskListItem; onEdit: () => void; onComplete: () => void; onDelete: () => void }) {
+function TaskRow({ task, onEdit, onComplete, onChangeStatus, onDelete }: {
+  task: TaskListItem;
+  onEdit: () => void;
+  onComplete: () => void;
+  onChangeStatus: (status: TaskStatus) => void;
+  onDelete: () => void;
+}) {
   const isDone = task.status === 'DONE';
   const extraAssignees = task.assigneeIds.length - 1;
   const [checklistDone, checklistTotal] = task.checklistSummary.split('/').map(Number);
 
   return (
-    <Card className="p-4 flex items-center gap-4">
-      <button
-        type="button"
-        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-          isDone ? 'bg-[var(--color-success)] border-[var(--color-success)]' : 'border-[var(--color-bg-border)]'
-        }`}
-        aria-label="Bajarildi deb belgilash"
-        onClick={onComplete}
-        disabled={isDone}
-      >
-        {isDone && <Check className="w-3 h-3 text-white" />}
-      </button>
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
-        <p className="font-medium text-[var(--color-text-primary)] truncate">{task.title}</p>
-        <span className="inline-flex items-center gap-2 mt-0.5">
-          <span className="inline-flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${priorityDotColor[task.priority]}`} />
-            <span className={`text-caption ${priorityTextColor[task.priority]}`}>{TASK_PRIORITY_LABELS[task.priority]}</span>
+    <Card className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <button
+          type="button"
+          className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+            isDone ? 'bg-[var(--color-success)] border-[var(--color-success)]' : 'border-[var(--color-bg-border)]'
+          }`}
+          aria-label="Bajarildi deb belgilash"
+          onClick={onComplete}
+          disabled={isDone}
+        >
+          {isDone && <Check className="w-3 h-3 text-white" />}
+        </button>
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
+          <p className="font-medium text-[var(--color-text-primary)] truncate">{task.title}</p>
+          <span className="inline-flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${priorityDotColor[task.priority]}`} />
+              <span className={`text-caption ${priorityTextColor[task.priority]}`}>{TASK_PRIORITY_LABELS[task.priority]}</span>
+            </span>
+            {checklistTotal > 0 && (
+              <span className="inline-flex items-center gap-1 text-caption text-[var(--color-text-muted)]">
+                <ListChecks className="h-3 w-3" />{checklistDone}/{checklistTotal}
+              </span>
+            )}
+            {task.fileCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-caption text-[var(--color-text-muted)]">
+                <Paperclip className="h-3 w-3" />{task.fileCount}
+              </span>
+            )}
           </span>
-          {checklistTotal > 0 && (
-            <span className="inline-flex items-center gap-1 text-caption text-[var(--color-text-muted)]">
-              <ListChecks className="h-3 w-3" />{checklistDone}/{checklistTotal}
+          <span className="flex items-center gap-2 mt-1.5">
+            <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
+            <span className="text-caption text-[var(--color-text-secondary)]">
+              {task.assigneeName}{extraAssignees > 0 && ` +${extraAssignees}`}
             </span>
-          )}
-          {task.fileCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-caption text-[var(--color-text-muted)]">
-              <Paperclip className="h-3 w-3" />{task.fileCount}
-            </span>
-          )}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-center">
+        <InlineTaskStatusSelect status={task.status} onChange={onChangeStatus} />
+        <span className="text-caption text-[var(--color-text-muted)]">
+          {new Date(task.dueDate).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
-      <div className="hidden sm:flex items-center gap-2">
-        <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="sm" />
-        <span className="text-caption text-[var(--color-text-secondary)]">
-          {task.assigneeName}{extraAssignees > 0 && ` +${extraAssignees}`}
-        </span>
+
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Button variant="ghost" size="sm" onClick={onEdit}>
+          Tahrirlash
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          className="bg-[var(--color-error-muted)] text-[var(--color-error)] hover:bg-[var(--color-error-muted)]"
+        >
+          O'chirish
+        </Button>
       </div>
-      <span className="hidden sm:block text-caption text-[var(--color-text-muted)] w-12">
-        {new Date(task.dueDate).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
-      </span>
-      <Badge variant={TASK_STATUS_COLORS[task.status]} dot>{TASK_STATUS_LABELS[task.status]}</Badge>
-      <Button variant="ghost" size="icon" onClick={onDelete} aria-label="O'chirish">
-        <Trash2 className="h-4 w-4 text-[var(--color-error)]" />
-      </Button>
     </Card>
   );
 }
@@ -305,7 +357,7 @@ export function TasksPage() {
                 Bugun ({todayTasks.length})
               </h3>
               {todayTasks.map((task) => (
-                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onDelete={() => handleOpenDelete(task)} />
+                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onChangeStatus={(status) => handleMove(task.id, status)} onDelete={() => handleOpenDelete(task)} />
               ))}
             </div>
           )}
@@ -316,7 +368,7 @@ export function TasksPage() {
                 Ertaga ({tomorrowTasks.length})
               </h3>
               {tomorrowTasks.map((task) => (
-                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onDelete={() => handleOpenDelete(task)} />
+                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onChangeStatus={(status) => handleMove(task.id, status)} onDelete={() => handleOpenDelete(task)} />
               ))}
             </div>
           )}
@@ -327,7 +379,7 @@ export function TasksPage() {
                 Boshqa ({otherTasks.length})
               </h3>
               {otherTasks.map((task) => (
-                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onDelete={() => handleOpenDelete(task)} />
+                <TaskRow key={task.id} task={task} onEdit={() => handleOpenEditForm(task)} onComplete={() => handleComplete(task)} onChangeStatus={(status) => handleMove(task.id, status)} onDelete={() => handleOpenDelete(task)} />
               ))}
             </div>
           )}
