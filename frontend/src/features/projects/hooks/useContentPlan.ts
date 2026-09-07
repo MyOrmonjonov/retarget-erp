@@ -16,6 +16,9 @@ export function useCreateContentPlanItem(projectId: string) {
     mutationFn: (data: ContentPlanItemInput) => contentPlanApi.create(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-plan', projectId] });
+      // Content plan items also count toward the project's progress ring - keep it in sync.
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Band qo\'shildi');
     },
     onError: (error: { message?: string }) => {
@@ -31,6 +34,9 @@ export function useUpdateContentPlanItem(projectId: string) {
       contentPlanApi.update(projectId, itemId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-plan', projectId] });
+      // Content plan items also count toward the project's progress ring - keep it in sync.
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Band yangilandi');
     },
     onError: (error: { message?: string }) => {
@@ -45,6 +51,9 @@ export function useDeleteContentPlanItem(projectId: string) {
     mutationFn: (itemId: string) => contentPlanApi.delete(projectId, itemId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-plan', projectId] });
+      // Content plan items also count toward the project's progress ring - keep it in sync.
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success("Band o'chirildi");
     },
     onError: (error: { message?: string }) => {
