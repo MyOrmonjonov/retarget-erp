@@ -1,8 +1,6 @@
 package uz.taskapp.project;
 
 import org.springframework.stereotype.Component;
-import uz.taskapp.contentplan.ContentPlanItemEntity;
-import uz.taskapp.contentplan.ContentPlanItemRepository;
 import uz.taskapp.task.TaskEntity;
 import uz.taskapp.task.TaskRepository;
 import uz.taskapp.task.TaskStatus;
@@ -12,11 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Ported from the reference CRM's calculateProjectAggregate - only the reachable subset:
- * the reference's other 4 sources (mediaPlan, project-scoped targetTasks, plans, calls) feed
- * tabs that are dead code in the reference's own UI, so for any project a real user could
- * actually build there, the formula already reduces to tasks + contentPlan (+ design tasks,
- * which in our schema are just regular tasks with a format tag, already counted once).
+ * A project's progress is purely its own tasks' completion ratio (completed / total, both
+ * counting only non-deleted tasks linked to the project) - explicitly NOT blended with content
+ * plan items, per the user's own spec: completing every task in a project must bring it to
+ * 100%, regardless of what state its content plan is in. An earlier version of this calculator
+ * folded content plan items into the same ratio (ported from the reference CRM's
+ * calculateProjectAggregate); that meant a project with all tasks done but a content plan still
+ * in progress never reached 100%, which is exactly the bug this was rewritten to fix.
  *
  * Shared between ProjectService (project list/detail responses) and DashboardService (the
  * "Loyihalar holati" panel) so both surfaces show the same live-computed percentage instead
@@ -25,15 +25,13 @@ import java.util.Map;
 @Component
 public class ProjectProgressCalculator {
     private final TaskRepository taskRepository;
-    private final ContentPlanItemRepository contentPlanItemRepository;
 
-    public ProjectProgressCalculator(TaskRepository taskRepository, ContentPlanItemRepository contentPlanItemRepository) {
+    public ProjectProgressCalculator(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
-        this.contentPlanItemRepository = contentPlanItemRepository;
     }
 
-    /** total/done item counts (tasks + content plan) alongside the rounded percentage, so the UI
-     *  can show the raw "done/total" fraction next to the ring, not just the percentage. */
+    /** total/done task counts alongside the rounded percentage, so the UI can show the raw
+     *  "done/total" fraction next to the ring, not just the percentage. */
     public record ProgressStat(int total, int done, int percentage) {
     }
 
@@ -46,12 +44,6 @@ public class ProjectProgressCalculator {
             if (stat == null) continue;
             stat[0]++;
             if (task.getStatus() == TaskStatus.COMPLETED) stat[1]++;
-        }
-        for (ContentPlanItemEntity item : contentPlanItemRepository.findAllByProjectIdIn(projectIds)) {
-            long[] stat = totals.get(item.getProjectId());
-            if (stat == null) continue;
-            stat[0]++;
-            if (item.getStatuses() != null && item.getStatuses().contains("Post qilindi")) stat[1]++;
         }
         Map<Long, ProgressStat> result = new LinkedHashMap<>();
         totals.forEach((id, stat) -> result.put(id, new ProgressStat((int) stat[0], (int) stat[1],
