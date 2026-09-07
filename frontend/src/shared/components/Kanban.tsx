@@ -20,10 +20,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
+import { InlineTaskStatusSelect } from '@/shared/components/InlineTaskStatusSelect';
 import type { Task, TaskStatus, KanbanColumn } from '@/shared/types';
 import { formatShortDate } from '@/shared/lib/utils';
 import { useUser } from '@/features/auth/store/authStore';
@@ -40,10 +41,12 @@ interface KanbanColumnProps {
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
+  onChangeStatus?: (taskId: string, status: TaskStatus) => void;
+  onDeleteTask?: (task: Task) => void;
   isLoading?: boolean;
 }
 
-function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, isLoading }: KanbanColumnProps) {
+function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, onChangeStatus, onDeleteTask, isLoading }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
@@ -79,7 +82,13 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, isLoadin
           aria-label={`${column.title} vazifalari`}
         >
           {tasks.map((task) => (
-            <KanbanTaskCard key={task.id} task={task} onClick={onTaskClick ? () => onTaskClick(task) : undefined} />
+            <KanbanTaskCard
+              key={task.id}
+              task={task}
+              onClick={onTaskClick ? () => onTaskClick(task) : undefined}
+              onChangeStatus={onChangeStatus}
+              onDelete={onDeleteTask}
+            />
           ))}
 
           {/* Empty State / Drop Zone */}
@@ -122,14 +131,24 @@ interface KanbanTaskCardProps {
   onClick?: () => void;
   isDragging?: boolean;
   canDrag?: boolean;
+  onChangeStatus?: (taskId: string, status: TaskStatus) => void;
+  onDelete?: (task: Task) => void;
 }
 
-function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true }: KanbanTaskCardProps) {
+/** Stops the click/pointerdown from reaching the card's own onClick (open edit) or the drag
+ *  listeners on its wrapper (KanbanTaskCard), so interactive controls inside the card - the
+ *  checkbox, status dropdown, and action buttons - work independently of both. */
+function stopBubble(e: React.SyntheticEvent) {
+  e.stopPropagation();
+}
+
+function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true, onChangeStatus, onDelete }: KanbanTaskCardProps) {
   const category = task.tags?.[0];
   const hasProgress = !!task.estimatedHours && task.loggedHours !== undefined;
   const progressPct = hasProgress
     ? Math.min(100, Math.round(((task.loggedHours ?? 0) / (task.estimatedHours ?? 1)) * 100))
     : 0;
+  const isDone = task.status === 'DONE';
 
   return (
     <div
@@ -144,6 +163,27 @@ function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true }: Kanba
       aria-label={task.title}
       onClick={onClick}
     >
+      <div className="flex items-start gap-2 mb-2">
+        {onChangeStatus && (
+          <button
+            type="button"
+            onClick={(e) => { stopBubble(e); onChangeStatus(String(task.id), 'DONE'); }}
+            onPointerDown={stopBubble}
+            disabled={isDone}
+            aria-label="Bajarildi deb belgilash"
+            className={cn(
+              'mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+              isDone ? 'bg-[var(--color-success)] border-[var(--color-success)]' : 'border-[var(--color-bg-border)]'
+            )}
+          >
+            {isDone && <Check className="w-2.5 h-2.5 text-white" />}
+          </button>
+        )}
+        <h4 className="flex-1 min-w-0 text-body font-medium text-[var(--color-text-primary)] line-clamp-2">
+          {task.title}
+        </h4>
+      </div>
+
       {/* Category badge */}
       {category && (
         <Badge variant="accent" size="sm" className="mb-2">
@@ -151,31 +191,50 @@ function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true }: Kanba
         </Badge>
       )}
 
-      {/* Title */}
-      <h4 className="text-body font-medium text-[var(--color-text-primary)] line-clamp-2 mb-2 pr-4">
-        {task.title}
-      </h4>
-
       {hasProgress && (
-        <div className="h-1 bg-[var(--color-bg-border)] rounded-full overflow-hidden mb-3">
+        <div className="h-1 bg-[var(--color-bg-border)] rounded-full overflow-hidden mb-2">
           <div className="h-full bg-[var(--color-accent)]" style={{ width: `${progressPct}%` }} />
         </div>
       )}
-      {!hasProgress && <div className="mb-1" />}
 
       {/* Meta Info */}
-      <div className="flex items-center justify-between text-caption text-[var(--color-text-secondary)]">
-        <span className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between text-caption text-[var(--color-text-secondary)] mb-2">
+        <span className="flex items-center gap-1.5 min-w-0">
           <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
-          {task.assigneeName}
+          <span className="truncate">{task.assigneeName}</span>
         </span>
-        {task.dueDate && <span>{formatShortDate(task.dueDate)}</span>}
+        {task.dueDate && <span className="flex-shrink-0">{formatShortDate(task.dueDate)}</span>}
       </div>
+
+      {onChangeStatus && (
+        <div onClick={stopBubble} onPointerDown={stopBubble} className="mb-2">
+          <InlineTaskStatusSelect status={task.status} onChange={(status) => onChangeStatus(String(task.id), status)} />
+        </div>
+      )}
+
+      {(onClick || onDelete) && (
+        <div className="flex items-center gap-3" onClick={stopBubble} onPointerDown={stopBubble}>
+          {onClick && (
+            <button type="button" onClick={onClick} className="text-caption font-medium text-[var(--color-accent)] hover:underline">
+              Tahrirlash
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(task)}
+              className="ml-auto text-caption font-medium text-[var(--color-error)] hover:underline"
+            >
+              O'chirish
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
+function KanbanTaskCard({ task, onClick, onChangeStatus, onDelete }: KanbanTaskCardProps) {
   const canDrag = useCanDragTask(task);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -196,7 +255,7 @@ function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
       {...attributes}
       {...listeners}
     >
-      <KanbanTaskCardBody task={task} onClick={onClick} canDrag={canDrag} />
+      <KanbanTaskCardBody task={task} onClick={onClick} canDrag={canDrag} onChangeStatus={onChangeStatus} onDelete={onDelete} />
     </div>
   );
 }
@@ -207,11 +266,16 @@ interface KanbanBoardProps {
   onTaskMove: (taskId: string, newStatus: TaskStatus) => void;
   onTaskClick?: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
+  /** Opt-in: shows a checkbox (quick-complete) and a clickable status dropdown on every card,
+   *  in addition to drag-and-drop. Omit to keep cards drag-only. */
+  onChangeStatus?: (taskId: string, status: TaskStatus) => void;
+  /** Opt-in: shows an "O'chirish" button on every card. */
+  onDeleteTask?: (task: Task) => void;
   isLoading?: boolean;
   className?: string;
 }
 
-export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask, isLoading, className }: KanbanBoardProps) {
+export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask, onChangeStatus, onDeleteTask, isLoading, className }: KanbanBoardProps) {
   const sensors = useSensors(
     // Mouse gets an immediate distance-based drag; touch gets a short hold delay instead, so a
     // quick swipe on a card scrolls the board horizontally (to reach the last columns) rather
@@ -297,6 +361,8 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask
             tasks={tasksByColumn[column.id] || []}
             onTaskClick={onTaskClick}
             onAddTask={onAddTask}
+            onChangeStatus={onChangeStatus}
+            onDeleteTask={onDeleteTask}
             isLoading={isLoading}
           />
         ))}

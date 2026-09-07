@@ -469,6 +469,8 @@ export function ProjectDetailPage() {
                 onTaskMove={handleMove}
                 onTaskClick={handleOpenEditTask}
                 onAddTask={handleOpenCreateTask}
+                onChangeStatus={handleMove}
+                onDeleteTask={setDeletingTask}
               />
             ) : monthTasks.length === 0 ? (
               <Card>
