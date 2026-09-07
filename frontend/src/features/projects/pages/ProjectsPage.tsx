@@ -31,18 +31,6 @@ const STATUS_SELECT_STYLE: Record<ProjectStatus, { backgroundColor: string; colo
   CANCELLED: { backgroundColor: 'var(--color-error-muted)', color: 'var(--color-error)' },
 };
 
-// Same per-status tinted-panel treatment as the Kanban columns (Kanban.tsx): a light wash +
-// border in the status's own color, so a project's card reads as "belonging" to its status at
-// a glance, consistent across the app. Kept subtle (low alpha) so it doesn't compete with the
-// stronger STATUS_SELECT_STYLE pill sitting on top of it.
-const STATUS_CARD_COLOR: Record<ProjectStatus, string> = {
-  PLANNING: '#AEAEB2',
-  ACTIVE: '#34C759',
-  ON_HOLD: '#FF9F0A',
-  COMPLETED: '#34C759',
-  CANCELLED: '#FF3B30',
-};
-
 function InlineStatusSelect({ project, onChange }: { project: Project; onChange: (status: ProjectStatus) => void }) {
   return (
     <select
@@ -67,17 +55,16 @@ function ProjectCard({ project, designProgress, onOpen, onEdit, onChangeStatus }
   onChangeStatus: (status: ProjectStatus) => void;
 }) {
   return (
-    <Card
-      className="p-5 cursor-pointer transition-colors"
-      style={{
-        backgroundColor: `${STATUS_CARD_COLOR[project.status]}14`,
-        borderColor: `${STATUS_CARD_COLOR[project.status]}33`,
-      }}
-      onClick={onOpen}
-    >
+    <Card className="p-5 cursor-pointer hover:border-[var(--color-text-muted)] transition-colors" onClick={onOpen}>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
-          <CircularProgress value={project.progress} size={56} strokeWidth={4} variant="accent" fillColor="var(--color-bg-hover)" />
+          <CircularProgress
+            value={project.progress}
+            size={64}
+            strokeWidth={6}
+            variant={project.progress > 0 ? 'success' : 'default'}
+            caption={project.progressTotal > 0 ? `${project.progressDone}/${project.progressTotal}` : undefined}
+          />
           <div className="min-w-0">
             <p className="font-medium text-[var(--color-text-primary)] truncate">{project.name}</p>
             <p className="text-caption text-[var(--color-text-muted)] truncate">{project.client}</p>

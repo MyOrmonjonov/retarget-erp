@@ -47,11 +47,12 @@ public class ProjectService {
             teamByProject.computeIfAbsent(m.getProjectId(), id -> new java.util.ArrayList<>()).add(m.getUserId());
         }
         Map<Long, UserEntity> usersById = usersById(projects, teamByProject);
-        Map<Long, Integer> progressByProject = progressCalculator.computeProgress(projectIds);
+        Map<Long, ProjectProgressCalculator.ProgressStat> statsByProject = progressCalculator.computeStats(projectIds);
+        ProjectProgressCalculator.ProgressStat emptyStat = new ProjectProgressCalculator.ProgressStat(0, 0, 0);
 
         return projects.stream()
                 .map(project -> toResponse(project, usersById, teamByProject.getOrDefault(project.getId(), List.of()),
-                        progressByProject.getOrDefault(project.getId(), 0)))
+                        statsByProject.getOrDefault(project.getId(), emptyStat)))
                 .toList();
     }
 
@@ -62,8 +63,9 @@ public class ProjectService {
         List<Long> teamUserIds = memberOfProjectRepository.findAllByIdProjectId(projectId).stream()
                 .map(ProjectMemberEntity::getUserId).toList();
         Map<Long, UserEntity> usersById = usersById(List.of(project), Map.of(projectId, teamUserIds));
-        int progress = progressCalculator.computeProgress(List.of(projectId)).getOrDefault(projectId, 0);
-        return toResponse(project, usersById, teamUserIds, progress);
+        ProjectProgressCalculator.ProgressStat stat = progressCalculator.computeStats(List.of(projectId))
+                .getOrDefault(projectId, new ProjectProgressCalculator.ProgressStat(0, 0, 0));
+        return toResponse(project, usersById, teamUserIds, stat);
     }
 
     @Transactional
@@ -137,7 +139,7 @@ public class ProjectService {
     }
 
     private ProjectResponse toResponse(ProjectEntity project, Map<Long, UserEntity> usersById, List<Long> teamUserIds,
-                                        int progress) {
+                                        ProjectProgressCalculator.ProgressStat stat) {
         UserEntity manager = usersById.get(project.getManagerId());
         List<ProjectResponse.TeamMemberDto> team = teamUserIds.stream()
                 .map(usersById::get)
@@ -145,7 +147,7 @@ public class ProjectService {
                 .map(u -> new ProjectResponse.TeamMemberDto(u.getId(), displayName(u), u.getPhotoUrl()))
                 .toList();
         return ProjectResponse.from(project, manager == null ? null : displayName(manager),
-                manager == null ? null : manager.getPhotoUrl(), team, progress);
+                manager == null ? null : manager.getPhotoUrl(), team, stat.percentage(), stat.total(), stat.done());
     }
 
     private ProjectEntity findWithinWorkspace(Long projectId, Long workspaceId) {

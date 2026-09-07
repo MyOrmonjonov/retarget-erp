@@ -18,6 +18,8 @@ public record ProjectResponse(
         String type,
         ProjectStatus status,
         int progress,
+        int progressTotal,
+        int progressDone,
         ProjectPriority priority,
         Long managerId,
         String managerName,
@@ -36,7 +38,7 @@ public record ProjectResponse(
         Instant updatedAt
 ) {
     public static ProjectResponse from(ProjectEntity project, String managerName, String managerAvatar,
-                                        List<TeamMemberDto> team, int progress) {
+                                        List<TeamMemberDto> team, int progress, int progressTotal, int progressDone) {
         return new ProjectResponse(
                 project.getId(),
                 project.getWorkspaceId(),
@@ -46,6 +48,8 @@ public record ProjectResponse(
                 project.getType(),
                 project.getStatus(),
                 progress,
+                progressTotal,
+                progressDone,
                 project.getPriority(),
                 project.getManagerId(),
                 managerName,

@@ -143,6 +143,8 @@ export interface Project extends BaseEntity {
   type: string;
   status: ProjectStatus;
   progress: number; // 0-100
+  progressTotal: number; // total tasks + content plan items counted toward progress
+  progressDone: number; // of which completed
   priority: ProjectPriority;
   managerId: string;
   managerName: string;

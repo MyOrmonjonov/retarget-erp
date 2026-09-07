@@ -12,6 +12,8 @@ interface ProjectDto {
   type: string | null;
   status: ProjectStatus;
   progress: number;
+  progressTotal: number;
+  progressDone: number;
   priority: ProjectPriority;
   managerId: number;
   managerName: string | null;
@@ -39,6 +41,8 @@ function toProject(dto: ProjectDto): Project {
     type: dto.type ?? '',
     status: dto.status,
     progress: dto.progress,
+    progressTotal: dto.progressTotal,
+    progressDone: dto.progressDone,
     priority: dto.priority,
     managerId: String(dto.managerId),
     managerName: dto.managerName ?? '',

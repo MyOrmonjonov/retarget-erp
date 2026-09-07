@@ -32,7 +32,12 @@ public class ProjectProgressCalculator {
         this.contentPlanItemRepository = contentPlanItemRepository;
     }
 
-    public Map<Long, Integer> computeProgress(List<Long> projectIds) {
+    /** total/done item counts (tasks + content plan) alongside the rounded percentage, so the UI
+     *  can show the raw "done/total" fraction next to the ring, not just the percentage. */
+    public record ProgressStat(int total, int done, int percentage) {
+    }
+
+    public Map<Long, ProgressStat> computeStats(List<Long> projectIds) {
         if (projectIds.isEmpty()) return Map.of();
         Map<Long, long[]> totals = new LinkedHashMap<>(); // [total, done]
         for (Long id : projectIds) totals.put(id, new long[2]);
@@ -48,8 +53,15 @@ public class ProjectProgressCalculator {
             stat[0]++;
             if (item.getStatuses() != null && item.getStatuses().contains("Post qilindi")) stat[1]++;
         }
+        Map<Long, ProgressStat> result = new LinkedHashMap<>();
+        totals.forEach((id, stat) -> result.put(id, new ProgressStat((int) stat[0], (int) stat[1],
+                stat[0] == 0 ? 0 : (int) Math.round(stat[1] * 100.0 / stat[0]))));
+        return result;
+    }
+
+    public Map<Long, Integer> computeProgress(List<Long> projectIds) {
         Map<Long, Integer> result = new LinkedHashMap<>();
-        totals.forEach((id, stat) -> result.put(id, stat[0] == 0 ? 0 : (int) Math.round(stat[1] * 100.0 / stat[0])));
+        computeStats(projectIds).forEach((id, stat) -> result.put(id, stat.percentage()));
         return result;
     }
 }

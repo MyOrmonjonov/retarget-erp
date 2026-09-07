@@ -9,6 +9,8 @@ export interface CircularProgressProps {
   showLabel?: boolean;
   className?: string;
   fillColor?: string;
+  /** Optional second line under the percentage, e.g. "24/25" (done/total). */
+  caption?: string;
 }
 
 export function CircularProgress({
@@ -20,6 +22,7 @@ export function CircularProgress({
   showLabel = true,
   className,
   fillColor,
+  caption,
 }: CircularProgressProps) {
   const variants = {
     default: 'stroke-[var(--color-accent)]',
@@ -57,12 +60,22 @@ export function CircularProgress({
         />
       </svg>
       {showLabel && (
-        <span
-          className="absolute font-bold text-[var(--color-text-primary)]"
-          style={{ fontSize: Math.max(size * 0.22, 10) }}
-        >
-          {Math.round(percentage)}%
-        </span>
+        <div className="absolute flex flex-col items-center leading-none">
+          <span
+            className="font-bold text-[var(--color-text-primary)]"
+            style={{ fontSize: Math.max(size * 0.22, 10) }}
+          >
+            {Math.round(percentage)}%
+          </span>
+          {caption && (
+            <span
+              className="mt-0.5 text-[var(--color-text-muted)]"
+              style={{ fontSize: Math.max(size * 0.13, 9) }}
+            >
+              {caption}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
