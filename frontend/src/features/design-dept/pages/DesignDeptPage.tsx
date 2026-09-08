@@ -20,8 +20,9 @@ import { TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_STATUS_LABELS, TASK_ST
 import { TaskForm, type TaskFormData } from '@/features/tasks/components/TaskForm';
 import { tasksApi, type TaskDetail, type TaskListItem } from '@/features/tasks/api/tasksApi';
 import { useDeptTasks } from '@/features/tasks/hooks/useDeptTasks';
-import { useCreateTask, useUpdateTask, useChangeTaskStatus } from '@/features/tasks/hooks/useTasks';
+import { useCreateTask, useUpdateTask, useChangeTaskStatus, useDeleteTask } from '@/features/tasks/hooks/useTasks';
 import { useGroups } from '@/features/groups/hooks/useGroups';
+import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 import { formatShortDate } from '@/shared/lib/utils';
 
 const DEPARTMENT_KEYWORDS = ['dizayn', 'design'];
@@ -73,10 +74,12 @@ export function DesignDeptPage() {
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const changeStatus = useChangeTaskStatus();
+  const deleteTask = useDeleteTask();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [isFormLoading, setIsFormLoading] = useState(false);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -158,6 +161,12 @@ export function DesignDeptPage() {
   const handleMove = useCallback((taskId: string, newStatus: TaskStatus) => {
     changeStatus.mutate({ id: taskId, status: newStatus });
   }, [changeStatus]);
+
+  const handleConfirmDeleteTask = useCallback(async () => {
+    if (!deletingTask) return;
+    await deleteTask.mutateAsync(String(deletingTask.id));
+    setDeletingTask(null);
+  }, [deletingTask, deleteTask]);
 
   const handleOpenCreateForm = useCallback(() => {
     setEditingTask(null);
@@ -284,6 +293,8 @@ export function DesignDeptPage() {
                 tasks={kanbanTasks}
                 onTaskMove={handleMove}
                 onTaskClick={handleOpenEditForm}
+                onChangeStatus={handleMove}
+                onDeleteTask={setDeletingTask}
               />
             ) : listGroups.length === 0 ? (
               <EmptyState icon={Palette} title="TZ topilmadi" description={`${monthLabel(activeMonth)} uchun mos TZ yo'q.`} />
@@ -398,6 +409,16 @@ export function DesignDeptPage() {
         assignees={assigneeOptions}
         groups={groups}
         showDesignFields
+      />
+
+      <DeleteConfirmation
+        isOpen={!!deletingTask}
+        onClose={() => setDeletingTask(null)}
+        onConfirm={handleConfirmDeleteTask}
+        isLoading={deleteTask.isPending}
+        title="Vazifani o'chirish"
+        description="Bu vazifa arxivlanadi. Davom etishni xohlaysizmi?"
+        itemName={deletingTask?.title}
       />
     </div>
   );
