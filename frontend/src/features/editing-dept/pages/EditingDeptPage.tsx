@@ -14,10 +14,11 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import type { Task, TaskStatus } from '@/shared/types';
 import { TaskForm, type TaskFormData } from '@/features/tasks/components/TaskForm';
 import { tasksApi, type TaskDetail, type TaskListItem } from '@/features/tasks/api/tasksApi';
-import { useTasks, useCreateTask, useUpdateTask, useReassignTask, useApproveTask, useRequestTaskRevision } from '@/features/tasks/hooks/useTasks';
+import { useTasks, useCreateTask, useUpdateTask, useReassignTask, useApproveTask, useRequestTaskRevision, useDeleteTask } from '@/features/tasks/hooks/useTasks';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
 import { useGroups } from '@/features/groups/hooks/useGroups';
 import { useUser } from '@/features/auth/store/authStore';
+import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 
 const DEPARTMENT_KEYWORDS = ['montaj', 'video', 'edit'];
 const VIDEO_KEYWORDS = ['video', 'montaj', 'rolik', 'reels', 'clip', 'klip'];
@@ -63,13 +64,14 @@ function monthLabel(key: string): string {
   return `${UZ_MONTHS[month - 1]} ${year}`;
 }
 
-function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestRevision }: {
+function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestRevision, onDelete }: {
   task: TaskListItem;
   canClaim: boolean;
   onClaim: () => void;
   onOpen: () => void;
   onApprove: () => void;
   onRequestRevision: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div
@@ -103,6 +105,14 @@ function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestR
           </Button>
         </div>
       )}
+      <div className="flex items-center gap-3 pt-1">
+        <button type="button" onClick={onOpen} className="text-caption font-medium text-[var(--color-accent)] hover:underline">
+          Tahrirlash
+        </button>
+        <button type="button" onClick={onDelete} className="ml-auto text-caption font-medium text-[var(--color-error)] hover:underline">
+          O'chirish
+        </button>
+      </div>
     </div>
   );
 }
@@ -119,12 +129,14 @@ export function EditingDeptPage() {
   const reassignTask = useReassignTask();
   const approveTask = useApproveTask();
   const requestRevision = useRequestTaskRevision();
+  const deleteTask = useDeleteTask();
 
   const [statusFilter, setStatusFilter] = useState<'ALL' | TaskStatus>('ALL');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [deletingTask, setDeletingTask] = useState<TaskListItem | null>(null);
 
   const editors = useMemo(
     () => employees.filter((e) => DEPARTMENT_KEYWORDS.some((k) => e.department?.toLowerCase().includes(k))),
@@ -223,6 +235,12 @@ export function EditingDeptPage() {
     handleCloseForm();
   }, [editingTask, updateTask, createTask, handleCloseForm]);
 
+  const handleConfirmDeleteTask = useCallback(async () => {
+    if (!deletingTask) return;
+    await deleteTask.mutateAsync(deletingTask.id);
+    setDeletingTask(null);
+  }, [deletingTask, deleteTask]);
+
   const handleDrop = useCallback((columnId: string, e: React.DragEvent) => {
     e.preventDefault();
     setDragOverColumn(null);
@@ -301,7 +319,7 @@ export function EditingDeptPage() {
           />
         </Card>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4" role="region" aria-label="Montaj doskasi">
+        <div className="flex gap-4 overflow-x-auto pb-4 touch-pan-x kanban-scroll" role="region" aria-label="Montaj doskasi">
           {[{ id: UNASSIGNED_COLUMN, label: 'Tayinlanmagan', avatar: undefined as string | undefined }, ...editors.map((e) => ({ id: e.userId, label: e.fullName, avatar: e.avatar }))].map((col) => {
             const tasks = tasksByColumn.get(col.id) ?? [];
             return (
@@ -310,8 +328,10 @@ export function EditingDeptPage() {
                 onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.id); }}
                 onDragLeave={() => setDragOverColumn((c) => (c === col.id ? null : c))}
                 onDrop={(e) => handleDrop(col.id, e)}
-                className={`flex flex-col min-w-[300px] max-w-[300px] flex-shrink-0 rounded-lg p-2 transition-colors ${
-                  dragOverColumn === col.id ? 'bg-[var(--color-accent-muted)]' : ''
+                className={`flex flex-col min-w-[300px] max-w-[300px] min-h-[160px] flex-shrink-0 rounded-xl border p-2 transition-colors ${
+                  dragOverColumn === col.id
+                    ? 'bg-[var(--color-accent-muted)] border-[var(--color-accent)]/40'
+                    : 'bg-[var(--color-bg-hover)] border-[var(--color-bg-border)]'
                 }`}
               >
                 <div className="flex items-center gap-2 px-1 py-2">
@@ -330,6 +350,7 @@ export function EditingDeptPage() {
                       onOpen={() => handleOpenEditForm(task)}
                       onApprove={() => approveTask.mutate(task.id)}
                       onRequestRevision={() => requestRevision.mutate(task.id)}
+                      onDelete={() => setDeletingTask(task)}
                     />
                   ))}
                   {tasks.length === 0 && (
@@ -352,6 +373,16 @@ export function EditingDeptPage() {
         isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
         groups={groups}
+      />
+
+      <DeleteConfirmation
+        isOpen={!!deletingTask}
+        onClose={() => setDeletingTask(null)}
+        onConfirm={handleConfirmDeleteTask}
+        isLoading={deleteTask.isPending}
+        title="Vazifani o'chirish"
+        description="Bu vazifa arxivlanadi. Davom etishni xohlaysizmi?"
+        itemName={deletingTask?.title}
       />
     </div>
   );
