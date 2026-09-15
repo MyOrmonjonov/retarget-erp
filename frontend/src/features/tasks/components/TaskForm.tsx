@@ -141,6 +141,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
   const [checklistDraft, setChecklistDraft] = useState('');
   const [titleError, setTitleError] = useState<string | undefined>();
   const [dueDateError, setDueDateError] = useState<string | undefined>();
+  const [assigneeError, setAssigneeError] = useState<string | undefined>();
 
   const selectedGroupId = form.groupId ? Number(form.groupId) : null;
   const { data: topics = [] } = useGroupTopics(selectedGroupId);
@@ -171,6 +172,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
     setChecklistDraft('');
     setTitleError(undefined);
     setDueDateError(undefined);
+    setAssigneeError(undefined);
   }, [isOpen, initialData, defaultStatus]);
 
   const toggleAssignee = (id: string) => {
@@ -178,6 +180,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
       ...f,
       assigneeIds: f.assigneeIds.includes(id) ? f.assigneeIds.filter((a) => a !== id) : [...f.assigneeIds, id],
     }));
+    setAssigneeError(undefined);
   };
 
   const addChecklistItem = () => {
@@ -221,6 +224,12 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
       valid = false;
     } else {
       setDueDateError(undefined);
+    }
+    if (form.assigneeIds.length === 0) {
+      setAssigneeError('Kamida bitta ijrochi tanlang');
+      valid = false;
+    } else {
+      setAssigneeError(undefined);
     }
     if (!valid) return;
     await onSubmit(form);
@@ -335,6 +344,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
                 })}
               </div>
             )}
+            {assigneeError && <p className="text-caption text-[var(--color-error)] mt-1.5">{assigneeError}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
