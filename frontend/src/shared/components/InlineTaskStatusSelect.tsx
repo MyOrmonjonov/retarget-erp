@@ -18,8 +18,12 @@ export const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
 
 const STATUS_SELECT_OPTIONS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'EDITING', 'REVIEW', 'DONE', 'BLOCKED'];
 
-export function InlineTaskStatusSelect({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void }) {
+export function InlineTaskStatusSelect({ status, onChange, options = STATUS_SELECT_OPTIONS }: { status: TaskStatus; onChange: (status: TaskStatus) => void; options?: TaskStatus[] }) {
   const color = TASK_STATUS_COLOR[status];
+  // The current status must stay selectable even if it isn't in `options` (e.g. a board's own
+  // column list doesn't include it) - otherwise the <select> silently falls back to its first
+  // option and firing onChange would misreport the task's real status.
+  const selectableOptions = options.includes(status) ? options : [status, ...options];
   return (
     <select
       value={status}
@@ -28,7 +32,7 @@ export function InlineTaskStatusSelect({ status, onChange }: { status: TaskStatu
       className="text-caption font-bold rounded-full pl-3 pr-1.5 py-1 border-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
       style={{ backgroundColor: `${color}1F`, borderColor: `${color}55`, color }}
     >
-      {STATUS_SELECT_OPTIONS.map((s) => (
+      {selectableOptions.map((s) => (
         <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
       ))}
     </select>

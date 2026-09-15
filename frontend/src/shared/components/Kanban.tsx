@@ -39,6 +39,7 @@ function useCanDragTask(task: Task): boolean {
 interface KanbanColumnProps {
   column: KanbanColumn;
   tasks: Task[];
+  columnStatuses: TaskStatus[];
   onTaskClick?: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
   onChangeStatus?: (taskId: string, status: TaskStatus) => void;
@@ -46,7 +47,7 @@ interface KanbanColumnProps {
   isLoading?: boolean;
 }
 
-function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, onChangeStatus, onDeleteTask, isLoading }: KanbanColumnProps) {
+function KanbanColumnComponent({ column, tasks, columnStatuses, onTaskClick, onAddTask, onChangeStatus, onDeleteTask, isLoading }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
@@ -88,6 +89,7 @@ function KanbanColumnComponent({ column, tasks, onTaskClick, onAddTask, onChange
               onClick={onTaskClick ? () => onTaskClick(task) : undefined}
               onChangeStatus={onChangeStatus}
               onDelete={onDeleteTask}
+              statusOptions={columnStatuses}
             />
           ))}
 
@@ -133,6 +135,10 @@ interface KanbanTaskCardProps {
   canDrag?: boolean;
   onChangeStatus?: (taskId: string, status: TaskStatus) => void;
   onDelete?: (task: Task) => void;
+  /** Statuses that have a column on this board - passed to the inline status <select> so picking
+   *  one can never land the task in a status this board can't display (it would otherwise vanish
+   *  from every column until viewed on a board that does have that status). */
+  statusOptions?: TaskStatus[];
 }
 
 /** Stops the click/pointerdown from reaching the card's own onClick (open edit) or the drag
@@ -142,7 +148,7 @@ function stopBubble(e: React.SyntheticEvent) {
   e.stopPropagation();
 }
 
-function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true, onChangeStatus, onDelete }: KanbanTaskCardProps) {
+function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true, onChangeStatus, onDelete, statusOptions }: KanbanTaskCardProps) {
   const category = task.tags?.[0];
   const hasProgress = !!task.estimatedHours && task.loggedHours !== undefined;
   const progressPct = hasProgress
@@ -208,7 +214,7 @@ function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true, onChang
 
       {onChangeStatus && (
         <div onClick={stopBubble} onPointerDown={stopBubble} className="mb-2">
-          <InlineTaskStatusSelect status={task.status} onChange={(status) => onChangeStatus(String(task.id), status)} />
+          <InlineTaskStatusSelect status={task.status} onChange={(status) => onChangeStatus(String(task.id), status)} options={statusOptions} />
         </div>
       )}
 
@@ -234,7 +240,7 @@ function KanbanTaskCardBody({ task, onClick, isDragging, canDrag = true, onChang
   );
 }
 
-function KanbanTaskCard({ task, onClick, onChangeStatus, onDelete }: KanbanTaskCardProps) {
+function KanbanTaskCard({ task, onClick, onChangeStatus, onDelete, statusOptions }: KanbanTaskCardProps) {
   const canDrag = useCanDragTask(task);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -255,7 +261,7 @@ function KanbanTaskCard({ task, onClick, onChangeStatus, onDelete }: KanbanTaskC
       {...attributes}
       {...listeners}
     >
-      <KanbanTaskCardBody task={task} onClick={onClick} canDrag={canDrag} onChangeStatus={onChangeStatus} onDelete={onDelete} />
+      <KanbanTaskCardBody task={task} onClick={onClick} canDrag={canDrag} onChangeStatus={onChangeStatus} onDelete={onDelete} statusOptions={statusOptions} />
     </div>
   );
 }
@@ -317,6 +323,9 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask
   }, [columns, tasksByColumn]);
 
   const columnIds = React.useMemo(() => new Set(columns.map((c) => c.id)), [columns]);
+  // Restricts the inline status <select> on every card to statuses this board actually has a
+  // column for - picking a status with no column would make the card vanish from the board.
+  const columnStatuses = React.useMemo(() => columns.map((c) => c.status), [columns]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find((t) => t.id === event.active.id);
@@ -359,6 +368,7 @@ export function KanbanBoard({ columns, tasks, onTaskMove, onTaskClick, onAddTask
             key={column.id}
             column={column}
             tasks={tasksByColumn[column.id] || []}
+            columnStatuses={columnStatuses}
             onTaskClick={onTaskClick}
             onAddTask={onAddTask}
             onChangeStatus={onChangeStatus}
