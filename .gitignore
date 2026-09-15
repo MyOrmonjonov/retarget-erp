@@ -36,6 +36,7 @@ build/
 
 ### Env ###
 .env
+/Caddyfile
 
 ### Frontend (Node/Vite) ###
 frontend/node_modules/

@@ -32,6 +32,8 @@ services:
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-RetargetErpBot}
       TELEGRAM_MINI_APP_URL: ${TELEGRAM_MINI_APP_URL:-}
       BOOTSTRAP_OWNER_TELEGRAM_ID: ${BOOTSTRAP_OWNER_TELEGRAM_ID:-0}
+      ADMIN_BOOTSTRAP_USERNAME: ${ADMIN_BOOTSTRAP_USERNAME:-}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
     volumes:
       - uploads:/app/data/uploads
     ports:
@@ -46,9 +48,26 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+
+  # Terminates HTTPS (auto-provisions/renews a Let's Encrypt cert for whatever domain the
+  # Caddyfile names) and reverse-proxies everything to the frontend container, which in turn
+  # proxies /api and /ws to the backend (see frontend/nginx.conf) - so this is the only service
+  # that needs a host port open to the internet.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - frontend
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
 volumes:
   postgres_data:
   uploads:
+  caddy_data:
+  caddy_config:
