@@ -15,6 +15,12 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+    # V36/V37 got deployed before V34/V35 (which existed locally but were only committed
+    # afterwards) - production's schema history has 36/37 applied with 34/35 still pending,
+    # which Flyway's default strict ordering rejects outright ("out of order"). The two pairs
+    # are independent (separate new tables/columns, no cross-dependency), so it's safe to let
+    # Flyway backfill the skipped ones now instead of hand-editing flyway_schema_history.
+    out-of-order: true
   servlet:
     multipart:
       max-file-size: 25MB
