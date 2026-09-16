@@ -9,7 +9,8 @@ public record AppProperties(
         String authSecret,
         Duration accessTokenTtl,
         String uploadDirectory,
-        long bootstrapOwnerTelegramId
+        long bootstrapOwnerTelegramId,
+        String frontendOrigin
 ) {
     public AppProperties {
         if (authSecret == null || authSecret.isBlank()) {

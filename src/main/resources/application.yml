@@ -37,6 +37,7 @@ app:
   access-token-ttl: ${APP_ACCESS_TOKEN_TTL:P7D}
   upload-directory: ${UPLOAD_DIRECTORY:./data/uploads}
   bootstrap-owner-telegram-id: ${BOOTSTRAP_OWNER_TELEGRAM_ID:0}
+  frontend-origin: ${FRONTEND_ORIGIN:}
 
 gemini:
   api-key: ${GEMINI_API_KEY:}
