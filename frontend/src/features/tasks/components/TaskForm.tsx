@@ -73,6 +73,12 @@ interface TaskFormProps {
   /** Status to pre-select when creating a new task (e.g. "+" clicked on a specific Kanban
    * column) - ignored when editing an existing task, which always uses its own status. */
   defaultStatus?: TaskStatus;
+  /** Department-board context (Dizayn/Montaj bo'limi pages): the board's name plus the user ids
+   * of that department's employees. The board only shows tasks assigned to those people, so
+   * when every chosen assignee falls outside this list the task would silently never appear on
+   * the board the user is creating it from - warn instead of letting it vanish. */
+  deptBoardName?: string;
+  deptMemberIds?: string[];
 }
 
 const DESIGN_FORMAT_OPTIONS: SelectOption[] = [
@@ -139,7 +145,8 @@ function emptyForm(defaultStatus: TaskStatus = 'TODO'): TaskFormData {
 }
 
 export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, assignees = [], groups = [],
-                          showDesignFields = false, projects, defaultStatus }: TaskFormProps) {
+                          showDesignFields = false, projects, defaultStatus,
+                          deptBoardName, deptMemberIds }: TaskFormProps) {
   const isEdit = !!initialData;
   const [form, setForm] = useState<TaskFormData>(emptyForm());
   const [checklistDraft, setChecklistDraft] = useState('');
@@ -406,6 +413,12 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
               </div>
             )}
             {assigneeError && <p className="text-caption text-[var(--color-error)] mt-1.5">{assigneeError}</p>}
+            {deptBoardName && deptMemberIds && form.assigneeIds.length > 0
+              && !form.assigneeIds.some((id) => deptMemberIds.includes(id)) && (
+              <p className="text-caption text-[var(--color-warning)] mt-1.5">
+                Diqqat: tanlangan ijrochilar orasida {deptBoardName} xodimi yo'q - bu vazifa {deptBoardName} doskasida ko'rinmaydi (faqat umumiy Vazifalar sahifasida chiqadi)
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

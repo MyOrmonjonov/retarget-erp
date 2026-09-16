@@ -352,6 +352,8 @@ export function EditingDeptPage() {
         isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
         groups={groups}
+        deptBoardName="Montaj bo'limi"
+        deptMemberIds={assigneeOptions.map((a) => a.value)}
       />
 
       <DeleteConfirmation

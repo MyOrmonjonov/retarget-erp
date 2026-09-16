@@ -415,6 +415,8 @@ export function DesignDeptPage() {
         assignees={assigneeOptions}
         groups={groups}
         showDesignFields
+        deptBoardName="Dizayn bo'limi"
+        deptMemberIds={assigneeOptions.map((a) => a.value)}
       />
 
       <DeleteConfirmation
