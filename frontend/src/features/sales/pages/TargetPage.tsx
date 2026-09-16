@@ -52,16 +52,25 @@ export function TargetPage() {
   // Ported from the reference CRM's Target bo'limi: one column per project (not a status
   // kanban) with its own progress ring, matching how the reference scopes target tasks to a
   // project rather than to a workspace-wide status board.
+  // A task with no projectId (linking one is optional on the form) used to just vanish here -
+  // it matched no column and was silently dropped. Give those an explicit catch-all column
+  // instead, same principle as the Kanban board never letting a task fall out of every column.
   const projectColumns = useMemo(() => {
-    const byProject = new Map<string, { projectId: string; name: string; tasks: TaskListItem[] }>();
+    const byProject = new Map<string, { projectId: string | undefined; name: string; tasks: TaskListItem[] }>();
     for (const project of projects) {
       byProject.set(String(project.id), { projectId: String(project.id), name: project.name, tasks: [] });
     }
+    const unassigned: { projectId: string | undefined; name: string; tasks: TaskListItem[] } = {
+      projectId: undefined,
+      name: 'Loyihasiz',
+      tasks: [],
+    };
     for (const task of displayTasks) {
-      if (!task.projectId || !byProject.has(task.projectId)) continue;
-      byProject.get(task.projectId)!.tasks.push(task);
+      const bucket = task.projectId ? byProject.get(task.projectId) : undefined;
+      (bucket ?? unassigned).tasks.push(task);
     }
-    return Array.from(byProject.values()).map((col) => {
+    const columns = [...byProject.values(), ...(unassigned.tasks.length > 0 ? [unassigned] : [])];
+    return columns.map((col) => {
       const total = col.tasks.length;
       const done = col.tasks.filter((t) => t.status === 'DONE').length;
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -145,7 +154,7 @@ export function TargetPage() {
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {projectColumns.map((col) => (
-            <div key={col.projectId} className="min-w-[280px] max-w-[280px] flex-shrink-0">
+            <div key={col.projectId ?? 'unassigned'} className="min-w-[280px] max-w-[280px] flex-shrink-0">
               <Card className="p-3 h-full flex flex-col">
                 <div className="flex items-center gap-3 pb-3 mb-3 border-b border-[var(--color-bg-border)]">
                   <CircularProgress value={col.pct} size={40} strokeWidth={4} variant="accent" showLabel={false} />

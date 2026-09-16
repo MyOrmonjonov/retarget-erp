@@ -11,6 +11,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Avatar } from '@/shared/ui/avatar';
 import type { Employee, EmployeeStatus, UserRole } from '@/shared/types';
 import type { WorkspaceMember } from '../api/employeesApi';
+import { DESIGN_DEPT_KEYWORDS, EDITING_DEPT_KEYWORDS } from '@/shared/constants/departmentKeywords';
+
+const DEPT_BOARD_KEYWORDS: { boardLabel: string; keywords: string[] }[] = [
+  { boardLabel: "Dizayn bo'limi", keywords: DESIGN_DEPT_KEYWORDS },
+  { boardLabel: "Montaj bo'limi", keywords: EDITING_DEPT_KEYWORDS },
+];
+
+/** The department boards (useDeptTasks) only show a task if the assignee's free-text
+ * `department` matches one of their keywords - so an unmatched department silently hides that
+ * person's tasks from every such board. Surface that here instead of letting it be a mystery. */
+function matchingBoards(department: string): string[] {
+  const normalized = department.trim().toLowerCase();
+  if (!normalized) return [];
+  return DEPT_BOARD_KEYWORDS.filter((b) => b.keywords.some((k) => normalized.includes(k))).map((b) => b.boardLabel);
+}
 
 const employeeSchema = z.object({
   userId: z.string().optional(),
@@ -41,6 +56,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, available
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -101,6 +117,9 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, available
     label: [m.firstName, m.lastName].filter(Boolean).join(' ') + (m.username ? ` (@${m.username})` : ''),
   }));
 
+  const departmentValue = watch('department') ?? '';
+  const matchedBoards = matchingBoards(departmentValue);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent size="lg">
@@ -153,11 +172,24 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, available
               options={roleOptions}
               error={errors.role?.message}
             />
-            <Input
-              {...register('department')}
-              label="Bo'lim"
-              placeholder="Mas: SMM bo'limi"
-            />
+            <div>
+              <Input
+                {...register('department')}
+                label="Bo'lim"
+                placeholder="Mas: SMM bo'limi"
+              />
+              {departmentValue.trim() && (
+                matchedBoards.length > 0 ? (
+                  <p className="mt-1 text-caption text-[var(--color-text-muted)]">
+                    Vazifalari ko'rinadi: {matchedBoards.join(', ')}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-caption text-[var(--color-warning)]">
+                    Bu nom hech qaysi bo'lim doskasiga (Dizayn/Montaj) mos kelmaydi - xodimning vazifalari faqat umumiy Vazifalar sahifasida ko'rinadi
+                  </p>
+                )
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input

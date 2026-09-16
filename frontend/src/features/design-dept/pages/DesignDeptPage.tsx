@@ -24,8 +24,9 @@ import { useCreateTask, useUpdateTask, useChangeTaskStatus, useDeleteTask } from
 import { useGroups } from '@/features/groups/hooks/useGroups';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 import { formatShortDate } from '@/shared/lib/utils';
+import { DESIGN_DEPT_KEYWORDS } from '@/shared/constants/departmentKeywords';
 
-const DEPARTMENT_KEYWORDS = ['dizayn', 'design'];
+const DEPARTMENT_KEYWORDS = DESIGN_DEPT_KEYWORDS;
 
 const UZ_MONTHS = [
   'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
@@ -79,6 +80,7 @@ export function DesignDeptPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [isFormLoading, setIsFormLoading] = useState(false);
+  const [createDefaultStatus, setCreateDefaultStatus] = useState<TaskStatus | undefined>(undefined);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -168,7 +170,8 @@ export function DesignDeptPage() {
     setDeletingTask(null);
   }, [deletingTask, deleteTask]);
 
-  const handleOpenCreateForm = useCallback(() => {
+  const handleOpenCreateForm = useCallback((status?: TaskStatus) => {
+    setCreateDefaultStatus(status);
     setEditingTask(null);
     setIsFormOpen(true);
   }, []);
@@ -189,6 +192,7 @@ export function DesignDeptPage() {
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
     setEditingTask(null);
+    setCreateDefaultStatus(undefined);
   }, []);
 
   const handleFormSubmit = useCallback(async (data: TaskFormData) => {
@@ -206,7 +210,7 @@ export function DesignDeptPage() {
         <p className="text-caption text-[var(--color-text-secondary)]">
           "Dizayn" departmentidagi xodimlarga biriktirilgan vazifalar
         </p>
-        <Button variant="primary" onClick={handleOpenCreateForm}>
+        <Button variant="primary" onClick={() => handleOpenCreateForm()}>
           <Plus className="h-4 w-4" />
           Yangi TZ
         </Button>
@@ -293,6 +297,7 @@ export function DesignDeptPage() {
                 tasks={kanbanTasks}
                 onTaskMove={handleMove}
                 onTaskClick={handleOpenEditForm}
+                onAddTask={handleOpenCreateForm}
                 onChangeStatus={handleMove}
                 onDeleteTask={setDeletingTask}
               />
@@ -405,6 +410,7 @@ export function DesignDeptPage() {
         onClose={handleCloseForm}
         onSubmit={handleFormSubmit}
         initialData={editingTask}
+        defaultStatus={createDefaultStatus}
         isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
         groups={groups}

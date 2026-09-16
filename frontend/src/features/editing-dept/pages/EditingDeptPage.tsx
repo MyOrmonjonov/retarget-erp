@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Badge } from '@/shared/ui/badge';
+import { Card } from '@/shared/ui/card';
 import { Avatar } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
 import { Select } from '@/shared/ui/select';
@@ -11,18 +10,19 @@ import { Plus, Check, RotateCcw, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { FilterPills } from '@/shared/components/FilterPills';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { InlineTaskStatusSelect } from '@/shared/components/InlineTaskStatusSelect';
 import type { Task, TaskStatus } from '@/shared/types';
 import { TaskForm, type TaskFormData } from '@/features/tasks/components/TaskForm';
 import { tasksApi, type TaskDetail, type TaskListItem } from '@/features/tasks/api/tasksApi';
-import { useTasks, useCreateTask, useUpdateTask, useReassignTask, useApproveTask, useRequestTaskRevision, useDeleteTask } from '@/features/tasks/hooks/useTasks';
+import { useTasks, useCreateTask, useUpdateTask, useChangeTaskStatus, useReassignTask, useApproveTask, useRequestTaskRevision, useDeleteTask } from '@/features/tasks/hooks/useTasks';
 import { useEmployees } from '@/features/employees/hooks/useEmployees';
 import { useGroups } from '@/features/groups/hooks/useGroups';
 import { useUser } from '@/features/auth/store/authStore';
 import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
+import { EDITING_DEPT_KEYWORDS } from '@/shared/constants/departmentKeywords';
 
-const DEPARTMENT_KEYWORDS = ['montaj', 'video', 'edit'];
+const DEPARTMENT_KEYWORDS = EDITING_DEPT_KEYWORDS;
 const VIDEO_KEYWORDS = ['video', 'montaj', 'rolik', 'reels', 'clip', 'klip'];
-const UNASSIGNED_COLUMN = 'unassigned';
 
 const MONTAJ_STATUS_LABELS: Record<TaskStatus, string> = {
   BACKLOG: 'Kutilmoqda',
@@ -34,15 +34,16 @@ const MONTAJ_STATUS_LABELS: Record<TaskStatus, string> = {
   DONE: 'Bajarildi',
 };
 
-const MONTAJ_STATUS_COLORS: Record<TaskStatus, 'default' | 'success' | 'warning' | 'error'> = {
-  BACKLOG: 'default',
-  TODO: 'default',
-  IN_PROGRESS: 'success',
-  EDITING: 'success',
-  REVIEW: 'warning',
-  BLOCKED: 'error',
-  DONE: 'success',
-};
+// Status-based columns (not per-editor) - every status a Montaj task can be in gets its own
+// column, so a task never becomes invisible just because of which status it's created with.
+const MONTAJ_COLUMNS: { status: TaskStatus; color: string }[] = [
+  { status: 'TODO', color: '#6B7280' },
+  { status: 'IN_PROGRESS', color: '#0071E3' },
+  { status: 'EDITING', color: '#5856D6' },
+  { status: 'REVIEW', color: '#FF9F0A' },
+  { status: 'BLOCKED', color: '#FF3B30' },
+  { status: 'DONE', color: '#34C759' },
+];
 
 function isVideoTask(task: TaskListItem): boolean {
   const haystack = `${task.title} ${task.description ?? ''}`.toLowerCase();
@@ -64,11 +65,12 @@ function monthLabel(key: string): string {
   return `${UZ_MONTHS[month - 1]} ${year}`;
 }
 
-function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestRevision, onDelete }: {
+function EditorTaskCard({ task, canClaim, onClaim, onOpen, onChangeStatus, onApprove, onRequestRevision, onDelete }: {
   task: TaskListItem;
   canClaim: boolean;
   onClaim: () => void;
   onOpen: () => void;
+  onChangeStatus: (status: TaskStatus) => void;
   onApprove: () => void;
   onRequestRevision: () => void;
   onDelete: () => void;
@@ -81,9 +83,13 @@ function EditorTaskCard({ task, canClaim, onClaim, onOpen, onApprove, onRequestR
     >
       <div className="flex items-start justify-between gap-2" onClick={onOpen} role="button" tabIndex={0}>
         <p className="text-body font-medium text-[var(--color-text-primary)] line-clamp-2 cursor-pointer">{task.title}</p>
-        <Badge variant={MONTAJ_STATUS_COLORS[task.status]} size="sm" dot className="flex-shrink-0">
-          {MONTAJ_STATUS_LABELS[task.status]}
-        </Badge>
+      </div>
+      <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        <InlineTaskStatusSelect status={task.status} onChange={onChangeStatus} />
+      </div>
+      <div className="flex items-center gap-1.5 text-caption text-[var(--color-text-secondary)]">
+        <Avatar name={task.assigneeName || 'Tayinlanmagan'} src={task.assigneeAvatar} size="xs" />
+        <span className="truncate">{task.assigneeName || 'Tayinlanmagan'}</span>
       </div>
       {task.revisionCount > 0 && (
         <p className="text-caption text-[var(--color-warning)]">Qayta ishlangan: {task.revisionCount} marta</p>
@@ -126,6 +132,7 @@ export function EditingDeptPage() {
 
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const changeStatus = useChangeTaskStatus();
   const reassignTask = useReassignTask();
   const approveTask = useApproveTask();
   const requestRevision = useRequestTaskRevision();
@@ -135,7 +142,8 @@ export function EditingDeptPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [isFormLoading, setIsFormLoading] = useState(false);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [createDefaultStatus, setCreateDefaultStatus] = useState<TaskStatus | undefined>(undefined);
+  const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [deletingTask, setDeletingTask] = useState<TaskListItem | null>(null);
 
   const editors = useMemo(
@@ -171,39 +179,20 @@ export function EditingDeptPage() {
       .filter((t) => statusFilter === 'ALL' || t.status === statusFilter);
   }, [allVideoTasks, activeMonth, statusFilter]);
 
-  const tasksByColumn = useMemo(() => {
-    const grouped = new Map<string, TaskListItem[]>();
-    grouped.set(UNASSIGNED_COLUMN, []);
-    for (const editor of editors) grouped.set(editor.userId, []);
+  const tasksByStatus = useMemo(() => {
+    const grouped = new Map<TaskStatus, TaskListItem[]>();
+    for (const column of MONTAJ_COLUMNS) grouped.set(column.status, []);
     for (const task of videoTasks) {
-      const editorAssignee = task.assigneeIds.find((id) => editorIds.has(id));
-      const columnId = editorAssignee ?? UNASSIGNED_COLUMN;
-      if (!grouped.has(columnId)) grouped.set(columnId, []);
-      grouped.get(columnId)!.push(task);
+      if (!grouped.has(task.status)) grouped.set(task.status, []);
+      grouped.get(task.status)!.push(task);
     }
     return grouped;
-  }, [videoTasks, editors, editorIds]);
-
-  // Ported from the reference CRM's Montaj page: KPI rewards finished videos, meeting the
-  // deadline, and getting approved on the first try; each revision counts against it.
-  const editorKpi = useMemo(() => {
-    return editors.map((editor) => {
-      const tasks = videoTasks.filter((t) => t.assigneeIds.includes(editor.userId));
-      const done = tasks.filter((t) => t.status === 'DONE');
-      const deadlineMet = done.filter((t) => t.finishedAt && new Date(t.finishedAt) <= new Date(t.dueDate));
-      const firstApproval = done.filter((t) => t.revisionCount === 0);
-      const totalRevisions = tasks.reduce((sum, t) => sum + t.revisionCount, 0);
-      const kpi = Math.min(100, Math.max(0,
-        done.length * 10 + deadlineMet.length * 5 + firstApproval.length * 8 - totalRevisions * 3));
-      return { name: editor.fullName, kpi, done: done.length, revisions: totalRevisions, active: tasks.length - done.length };
-    }).sort((a, b) => b.kpi - a.kpi);
-  }, [editors, videoTasks]);
-
-  const canSeeKpiPanel = currentUser?.role === 'CEO' || currentUser?.role === 'MENEJER' || currentUser?.role === 'BOSHQARUVCHI';
+  }, [videoTasks]);
 
   const assigneeOptions = useMemo(() => editors.map((e) => ({ value: e.userId, label: e.fullName })), [editors]);
 
-  const handleOpenCreateForm = useCallback(() => {
+  const handleOpenCreateForm = useCallback((status?: TaskStatus) => {
+    setCreateDefaultStatus(status);
     setEditingTask(null);
     setIsFormOpen(true);
   }, []);
@@ -224,6 +213,7 @@ export function EditingDeptPage() {
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
     setEditingTask(null);
+    setCreateDefaultStatus(undefined);
   }, []);
 
   const handleFormSubmit = useCallback(async (data: TaskFormData) => {
@@ -241,13 +231,13 @@ export function EditingDeptPage() {
     setDeletingTask(null);
   }, [deletingTask, deleteTask]);
 
-  const handleDrop = useCallback((columnId: string, e: React.DragEvent) => {
+  const handleDrop = useCallback((status: TaskStatus, e: React.DragEvent) => {
     e.preventDefault();
     setDragOverColumn(null);
     const taskId = e.dataTransfer.getData('text/task-id');
     if (!taskId) return;
-    reassignTask.mutate({ id: taskId, assigneeIds: columnId === UNASSIGNED_COLUMN ? [] : [columnId] });
-  }, [reassignTask]);
+    changeStatus.mutate({ id: taskId, status });
+  }, [changeStatus]);
 
   return (
     <div className="space-y-6 animate-in">
@@ -277,32 +267,11 @@ export function EditingDeptPage() {
             className="w-44"
           />
         </div>
-        <Button variant="primary" onClick={handleOpenCreateForm}>
+        <Button variant="primary" onClick={() => handleOpenCreateForm()}>
           <Plus className="h-4 w-4" />
           Yangi vazifa
         </Button>
       </div>
-
-      {canSeeKpiPanel && editorKpi.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="!text-[16px] !font-bold">Montajorlar KPI</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {editorKpi.map((e) => (
-                <div key={e.name} className="rounded-[10px] bg-[var(--color-bg-hover)] p-3">
-                  <p className="text-body font-medium text-[var(--color-text-primary)] truncate">{e.name}</p>
-                  <p className="text-h2 font-bold text-[var(--color-accent)]">{e.kpi}%</p>
-                  <p className="text-caption text-[var(--color-text-muted)]">
-                    Bajarildi: {e.done} &middot; Faol: {e.active} &middot; Qayta: {e.revisions}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {isLoading ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
@@ -320,24 +289,23 @@ export function EditingDeptPage() {
         </Card>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4 touch-pan-x kanban-scroll" role="region" aria-label="Montaj doskasi">
-          {[{ id: UNASSIGNED_COLUMN, label: 'Tayinlanmagan', avatar: undefined as string | undefined }, ...editors.map((e) => ({ id: e.userId, label: e.fullName, avatar: e.avatar }))].map((col) => {
-            const tasks = tasksByColumn.get(col.id) ?? [];
+          {MONTAJ_COLUMNS.map((col) => {
+            const tasks = tasksByStatus.get(col.status) ?? [];
             return (
               <div
-                key={col.id}
-                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.id); }}
-                onDragLeave={() => setDragOverColumn((c) => (c === col.id ? null : c))}
-                onDrop={(e) => handleDrop(col.id, e)}
+                key={col.status}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.status); }}
+                onDragLeave={() => setDragOverColumn((c) => (c === col.status ? null : c))}
+                onDrop={(e) => handleDrop(col.status, e)}
                 className={`flex flex-col min-w-[300px] max-w-[300px] min-h-[160px] flex-shrink-0 rounded-xl border p-2 transition-colors ${
-                  dragOverColumn === col.id
+                  dragOverColumn === col.status
                     ? 'bg-[var(--color-accent-muted)] border-[var(--color-accent)]/40'
                     : 'bg-[var(--color-bg-hover)] border-[var(--color-bg-border)]'
                 }`}
               >
                 <div className="flex items-center gap-2 px-1 py-2">
-                  {col.id !== UNASSIGNED_COLUMN && <Avatar name={col.label} src={col.avatar} size="xs" />}
-                  <h3 className="text-caption font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
-                    {col.label} ({tasks.length})
+                  <h3 className="text-caption font-semibold uppercase tracking-wider" style={{ color: col.color }}>
+                    {MONTAJ_STATUS_LABELS[col.status]} ({tasks.length})
                   </h3>
                 </div>
                 <div className="flex-1 space-y-2 px-1 pb-2 min-h-[80px]">
@@ -345,9 +313,10 @@ export function EditingDeptPage() {
                     <EditorTaskCard
                       key={task.id}
                       task={task}
-                      canClaim={col.id === UNASSIGNED_COLUMN && isCurrentUserEditor}
+                      canClaim={task.assigneeIds.length === 0 && isCurrentUserEditor}
                       onClaim={() => currentUser && reassignTask.mutate({ id: task.id, assigneeIds: [currentUser.id] })}
                       onOpen={() => handleOpenEditForm(task)}
+                      onChangeStatus={(status) => changeStatus.mutate({ id: task.id, status })}
                       onApprove={() => approveTask.mutate(task.id)}
                       onRequestRevision={() => requestRevision.mutate(task.id)}
                       onDelete={() => setDeletingTask(task)}
@@ -358,6 +327,15 @@ export function EditingDeptPage() {
                       Vazifalar yo'q
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateForm(col.status)}
+                    className="flex items-center justify-center gap-1.5 w-full h-10 rounded-lg border-2 border-dashed text-caption font-semibold transition-colors hover:bg-[var(--color-bg-surface)]"
+                    style={{ borderColor: `${col.color}66`, color: col.color }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Vazifa qo'shish
+                  </button>
                 </div>
               </div>
             );
@@ -370,6 +348,7 @@ export function EditingDeptPage() {
         onClose={handleCloseForm}
         onSubmit={handleFormSubmit}
         initialData={editingTask}
+        defaultStatus={createDefaultStatus}
         isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
         groups={groups}
