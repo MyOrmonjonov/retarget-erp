@@ -84,6 +84,7 @@ export function DesignDeptPage() {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
 
   const currentMonth = useMemo(() => monthKey(new Date().toISOString()), []);
   const [activeMonth, setActiveMonth] = useState(currentMonth);
@@ -130,21 +131,18 @@ export function DesignDeptPage() {
       .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   }, [monthTasks]);
 
-  const kanbanTasks = monthTasks;
+  const kanbanTasks = useMemo(
+    () => (projectFilter ? monthTasks.filter((t) => t.projectId === projectFilter) : monthTasks),
+    [monthTasks, projectFilter]
+  );
 
   const listGroups = useMemo(() => {
-    if (statusFilter === 'ALL') return projectGroups;
-    return projectGroups
+    const groups = projectFilter ? projectGroups.filter((g) => g.projectId === projectFilter) : projectGroups;
+    if (statusFilter === 'ALL') return groups;
+    return groups
       .map((g) => ({ ...g, tasks: g.tasks.filter((t) => t.status === statusFilter) }))
       .filter((g) => g.tasks.length > 0);
-  }, [projectGroups, statusFilter]);
-
-  // Right-hand sidebar: the month's TZs themselves (newest first, so a just-created one shows
-  // up top immediately) - replaced the earlier per-project filter list at the user's request.
-  const sidebarTasks = useMemo(
-    () => [...monthTasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [monthTasks]
-  );
+  }, [projectGroups, projectFilter, statusFilter]);
 
   // Ported from the reference CRM's Design page: per-designer load, normalized against
   // whoever on the team currently has the most design tasks this month (not a fixed cap).
@@ -253,7 +251,9 @@ export function DesignDeptPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 items-start">
           <Card className="p-4">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-              <p className="text-body font-semibold text-[var(--color-text-primary)]">Barcha TZlar</p>
+              <p className="text-body font-semibold text-[var(--color-text-primary)]">
+                {projectFilter ? projectGroups.find((g) => g.projectId === projectFilter)?.name ?? 'Barcha TZlar' : 'Barcha TZlar'}
+              </p>
               <div className="flex items-center gap-2 flex-wrap">
                 {viewMode === 'list' && (
                   <FilterPills options={STATUS_FILTER_OPTIONS} value={statusFilter} onChange={setStatusFilter} />
@@ -280,6 +280,16 @@ export function DesignDeptPage() {
                 </div>
               </div>
             </div>
+
+            {viewMode === 'list' && projectFilter && (
+              <button
+                type="button"
+                onClick={() => setProjectFilter(null)}
+                className="text-caption font-medium text-[var(--color-accent)] mb-3"
+              >
+                ← Barcha loyihalarga qaytish
+              </button>
+            )}
 
             {viewMode === 'kanban' ? (
               <KanbanBoard
@@ -336,32 +346,40 @@ export function DesignDeptPage() {
           <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="!text-[16px] !font-bold">TZlar ({sidebarTasks.length})</CardTitle>
+                <CardTitle className="!text-[16px] !font-bold">Loyihalar bo'yicha</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
-                {sidebarTasks.length === 0 ? (
-                  <p className="text-caption text-[var(--color-text-muted)]">Bu oy uchun TZ yo'q</p>
-                ) : (
-                  sidebarTasks.map((task) => (
-                    <button
-                      key={task.id}
-                      type="button"
-                      onClick={() => handleOpenEditForm(task)}
-                      className="w-full flex items-center gap-2.5 p-2 rounded-md text-left hover:bg-[var(--color-bg-hover)] transition-colors"
-                    >
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${task.status === 'DONE' ? 'bg-[var(--color-success)]' : task.status === 'REVIEW' ? 'bg-[var(--color-warning)]' : task.status === 'BLOCKED' ? 'bg-[var(--color-error)]' : 'bg-[var(--color-accent)]'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-caption font-medium truncate ${task.status === 'DONE' ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-primary)]'}`}>
-                          {task.title}
-                        </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                          {TASK_STATUS_LABELS[task.status]} &middot; {formatShortDate(task.dueDate)}
-                        </p>
-                      </div>
-                      <Avatar name={task.assigneeName} src={task.assigneeAvatar} size="xs" />
-                    </button>
-                  ))
-                )}
+              <CardContent className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setProjectFilter(null)}
+                  className={`w-full flex items-center gap-3 p-2 rounded-md border text-left ${
+                    projectFilter === null ? 'border-[var(--color-accent)] bg-[var(--color-accent-muted)]' : 'border-transparent bg-[var(--color-bg-hover)]'
+                  }`}
+                >
+                  <CircularProgress value={overallStats.pct} size={44} strokeWidth={4} variant="accent" showLabel={false} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-caption font-semibold text-[var(--color-text-primary)]">Barchasi</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">{overallStats.done}/{overallStats.total} TZ bajarildi</p>
+                    <Progress value={overallStats.pct} max={100} variant="accent" size="sm" className="mt-1.5" />
+                  </div>
+                </button>
+                {projectGroups.map((group) => (
+                  <button
+                    key={group.projectId}
+                    type="button"
+                    onClick={() => setProjectFilter((cur) => (cur === group.projectId ? null : group.projectId))}
+                    className={`w-full flex items-center gap-3 p-2 rounded-md border text-left ${
+                      projectFilter === group.projectId ? 'border-[var(--color-accent)] bg-[var(--color-accent-muted)]' : 'border-transparent bg-[var(--color-bg-hover)]'
+                    }`}
+                  >
+                    <CircularProgress value={group.pct} size={44} strokeWidth={4} variant="accent" showLabel={false} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-caption font-semibold text-[var(--color-text-primary)] truncate">{group.name}</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">{group.done}/{group.total} TZ bajarildi</p>
+                      <Progress value={group.pct} max={100} variant="accent" size="sm" className="mt-1.5" />
+                    </div>
+                  </button>
+                ))}
               </CardContent>
             </Card>
 
