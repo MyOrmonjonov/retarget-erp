@@ -7,11 +7,13 @@ import { NAV_ITEMS, filterNavByRole } from '@/shared/constants/navigation';
 import { Button } from '@/shared/ui/button';
 import { ScrollArea } from '@/shared/ui/scroll-area';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useT } from '@/shared/i18n/useT';
 
 export function Sidebar() {
   const { user, isSidebarCollapsed, toggleSidebar, isMobileNavOpen, setMobileNavOpen } = useAuthStore();
   const isMobileOpen = isMobileNavOpen;
   const setIsMobileOpen = setMobileNavOpen;
+  const t = useT();
 
   const navItems = user ? filterNavByRole(NAV_ITEMS, user.role) : [];
 
@@ -48,8 +50,8 @@ export function Sidebar() {
                 CRM
               </span>
               <span className="min-w-0">
-                <span className="block text-[14px] font-extrabold text-[var(--color-text-primary)] truncate">Retarget ERP</span>
-                <span className="block text-[11px] text-[var(--color-text-muted)] truncate">Boshqaruv tizimi</span>
+                <span className="block text-[14px] font-extrabold text-[var(--color-text-primary)] truncate">{t('nav.retarget_erp')}</span>
+                <span className="block text-[11px] text-[var(--color-text-muted)] truncate">{t('nav.control_system')}</span>
               </span>
             </Link>
           )}
@@ -92,7 +94,7 @@ export function Sidebar() {
               <div key={section.label} className="mb-6">
                 {!isSidebarCollapsed && (
                   <h4 className="px-3 py-1.5 text-[10.5px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                    {section.label}
+                    {t(section.label)}
                   </h4>
                 )}
                 <ul className={cn('space-y-1', isSidebarCollapsed && 'space-y-1.5 flex flex-col items-center')} role="list">
@@ -100,7 +102,7 @@ export function Sidebar() {
                     <li key={item.href} className={isSidebarCollapsed ? 'w-full flex justify-center' : undefined}>
                       <NavLink
                         to={item.href!}
-                        title={isSidebarCollapsed ? item.label : undefined}
+                        title={isSidebarCollapsed ? t(item.label) : undefined}
                         className={({ isActive }: { isActive: boolean }) =>
                           cn(
                             isSidebarCollapsed
@@ -126,7 +128,7 @@ export function Sidebar() {
                           )}
                           aria-hidden="true"
                         />
-                        {!isSidebarCollapsed && <span className="text-[13.5px] font-semibold truncate">{item.label}</span>}
+                        {!isSidebarCollapsed && <span className="text-[13.5px] font-semibold truncate">{t(item.label)}</span>}
                         {item.badge && !isSidebarCollapsed && (
                           <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[var(--color-error)] text-white">
                             {item.badge > 99 ? '99+' : item.badge}

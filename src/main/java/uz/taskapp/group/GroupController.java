@@ -2,6 +2,7 @@ package uz.taskapp.group;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -65,6 +66,17 @@ public class GroupController {
     GroupService.GroupResponse updateRules(HttpServletRequest request, @PathVariable Long groupId,
                                            @RequestBody UpdateGroupRulesRequest body) {
         return groupService.updateTaskRules(userId(request), groupId, body.taskCreationPolicy());
+    }
+
+    @DeleteMapping("/{groupId}")
+    ResponseEntity<Void> unlink(HttpServletRequest request, @PathVariable Long groupId) {
+        groupService.unlink(userId(request), groupId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{groupId}/sync-members")
+    GroupService.GroupResponse syncMembers(HttpServletRequest request, @PathVariable Long groupId) {
+        return groupService.syncMembers(userId(request), groupId);
     }
 
     private Long userId(HttpServletRequest request) {

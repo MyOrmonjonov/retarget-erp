@@ -41,7 +41,11 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
+        const code = (error.response?.data as { code?: string } | undefined)?.code;
+        // WORKSPACE_ACCESS_DENIED means the session's user/workspace no longer matches what the
+        // backend has (e.g. after a server-side data migration) - a plain retry can never succeed,
+        // so force a fresh Telegram re-auth instead of leaving the user stuck on a cryptic error.
+        if (error.response?.status === 401 || code === 'WORKSPACE_ACCESS_DENIED') {
           getAuthStore().clearAuth();
           window.location.href = '/login';
         }

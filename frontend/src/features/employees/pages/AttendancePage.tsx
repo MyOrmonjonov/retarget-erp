@@ -5,17 +5,17 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Avatar } from '@/shared/ui/avatar';
 import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { StatCard } from '@/shared/components/StatCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/ui/table';
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { Users } from 'lucide-react';
+import { format } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import type { AttendanceStatus } from '@/shared/types';
 import { useEmployees } from '../hooks/useEmployees';
 import { attendanceApi } from '../api/attendanceApi';
+import { MonthCalendar } from '@/shared/components/MonthCalendar';
 
 const statusLabel: Record<AttendanceStatus, string> = {
   PRESENT: "To'liq",
@@ -76,79 +76,75 @@ export function AttendancePage() {
   }, [rows]);
 
   return (
-    <div className="space-y-6 animate-in">
-      <div className="flex items-center justify-end">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setDate((d) => addDays(d, -1))} aria-label="Oldingi kun">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-body text-[var(--color-text-secondary)] min-w-36 text-center">
-            {format(date, 'd-MMMM yyyy', { locale: uz })}
-          </span>
-          <Button variant="ghost" size="icon" onClick={() => setDate((d) => addDays(d, 1))} aria-label="Keyingi kun">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Bugun kelgan" value={`${stats.present}/${stats.total}`} subtitle="Xodimlar" valueClassName="text-[var(--color-accent)]" isLoading={isLoading} />
-        <StatCard title="Kechikkanlar" value={stats.late} subtitle="Bugun" valueClassName="text-[var(--color-warning)]" isLoading={isLoading} />
-        <StatCard title="Kelmaganlar" value={stats.absent} subtitle="Bugun" valueClassName="text-[var(--color-error)]" isLoading={isLoading} />
-      </div>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="divide-y divide-[var(--color-bg-border)]">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="px-6 py-4 flex items-center gap-4">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-4 w-1/6" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Xodim</TableHead>
-                  <TableHead>Keldi</TableHead>
-                  <TableHead>Ketdi</TableHead>
-                  <TableHead>Jami soat</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.employeeId}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar name={row.fullName} src={row.avatar} size="sm" />
-                        <span className="font-medium text-[var(--color-text-primary)]">{row.fullName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[var(--color-text-secondary)]">{row.checkIn ?? '—'}</TableCell>
-                    <TableCell className="text-[var(--color-text-secondary)]">{row.checkOut ?? '—'}</TableCell>
-                    <TableCell className="text-[var(--color-text-secondary)]">{hoursBetween(row.checkIn, row.checkOut)}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant[row.status]}>{statusLabel[row.status]}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start animate-in">
+      <Card className="p-4">
+        <MonthCalendar selected={date} onSelect={setDate} />
       </Card>
 
-      {!isLoading && rows.length === 0 && (
+      <div className="space-y-6">
+        <p className="text-body font-semibold text-[var(--color-text-primary)] capitalize">
+          {format(date, 'd-MMMM yyyy, EEEE', { locale: uz })}
+        </p>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard title="Kelgan" value={`${stats.present}/${stats.total}`} subtitle="Xodimlar" valueClassName="text-[var(--color-accent)]" isLoading={isLoading} />
+          <StatCard title="Kechikkanlar" value={stats.late} subtitle="Shu kun" valueClassName="text-[var(--color-warning)]" isLoading={isLoading} />
+          <StatCard title="Kelmaganlar" value={stats.absent} subtitle="Shu kun" valueClassName="text-[var(--color-error)]" isLoading={isLoading} />
+        </div>
+
+        {/* Table */}
         <Card>
-          <EmptyState icon={Users} title="Xodimlar topilmadi" />
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="divide-y divide-[var(--color-bg-border)]">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="px-6 py-4 flex items-center gap-4">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-1/6" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Xodim</TableHead>
+                    <TableHead>Keldi</TableHead>
+                    <TableHead>Ketdi</TableHead>
+                    <TableHead>Jami soat</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.employeeId}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar name={row.fullName} src={row.avatar} size="sm" />
+                          <span className="font-medium text-[var(--color-text-primary)]">{row.fullName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{row.checkIn ?? '—'}</TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{row.checkOut ?? '—'}</TableCell>
+                      <TableCell className="text-[var(--color-text-secondary)]">{hoursBetween(row.checkIn, row.checkOut)}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant[row.status]}>{statusLabel[row.status]}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
         </Card>
-      )}
+
+        {!isLoading && rows.length === 0 && (
+          <Card>
+            <EmptyState icon={Users} title="Xodimlar topilmadi" />
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

@@ -94,6 +94,76 @@
   --z-tooltip: 700;
 }
 
+/* Dark mode palette - mirrors every light-mode token above with a dark equivalent. Applied via
+   `data-theme="dark"` on <html> (set by the app based on the saved "Ko'rinish" preference); the
+   `prefers-color-scheme` block covers the "system" choice for a user who hasn't picked a side,
+   guarded so an explicit `data-theme="light"` always wins over the OS setting. */
+:root[data-theme="dark"] {
+  --color-bg-primary: #121214;
+  --color-bg-sidebar: #1C1C1E;
+  --color-bg-surface: #1C1C1E;
+  --color-bg-border: #2C2C2E;
+  --color-bg-hover: #26262A;
+
+  --color-accent: #0A84FF;
+  --color-accent-hover: #339DFF;
+  --color-accent-muted: #17233A;
+
+  --color-text-primary: #F5F5F7;
+  --color-text-secondary: #98989D;
+  --color-text-muted: #636366;
+
+  --color-success: #30D158;
+  --color-success-muted: #0F2818;
+
+  --color-warning: #FF9F0A;
+  --color-warning-muted: #3A2A0A;
+
+  --color-error: #FF453A;
+  --color-error-muted: #3A1210;
+
+  --color-role-ceo: #0A84FF;
+  --color-role-manager: #98989D;
+  --color-role-supervisor: #98989D;
+  --color-role-editor: #98989D;
+  --color-role-staff: #98989D;
+  --color-role-operator: #98989D;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --color-bg-primary: #121214;
+    --color-bg-sidebar: #1C1C1E;
+    --color-bg-surface: #1C1C1E;
+    --color-bg-border: #2C2C2E;
+    --color-bg-hover: #26262A;
+
+    --color-accent: #0A84FF;
+    --color-accent-hover: #339DFF;
+    --color-accent-muted: #17233A;
+
+    --color-text-primary: #F5F5F7;
+    --color-text-secondary: #98989D;
+    --color-text-muted: #636366;
+
+    --color-success: #30D158;
+    --color-success-muted: #0F2818;
+
+    --color-warning: #FF9F0A;
+    --color-warning-muted: #3A2A0A;
+
+    --color-error: #FF453A;
+    --color-error-muted: #3A1210;
+
+    --color-role-ceo: #0A84FF;
+    --color-role-manager: #98989D;
+    --color-role-supervisor: #98989D;
+    --color-role-editor: #98989D;
+    --color-role-staff: #98989D;
+    --color-role-operator: #98989D;
+  }
+}
+
 /* Base Styles */
 @layer base {
   * {

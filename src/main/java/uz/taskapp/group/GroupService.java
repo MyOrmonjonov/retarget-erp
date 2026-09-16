@@ -166,6 +166,58 @@ public class GroupService {
                 taskNotificationService.botUsername(), group.getTaskCreationPolicy());
     }
 
+    /**
+     * Pulls the group's current admins from Telegram and registers each as a workspace member so
+     * they show up as assignable people right away - Telegram's Bot API has no way to enumerate
+     * ordinary (non-admin) members without them having sent the bot a message first (a privacy
+     * restriction, not something this app can work around), so this only ever helps with admins.
+     * Regular members still show up reactively, the moment they write in the group.
+     */
+    @Transactional
+    public GroupResponse syncMembers(Long userId, Long groupId) {
+        GroupEntity group = groupRepository.findById(groupId)
+                .filter(GroupEntity::isActive)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "GROUP_NOT_FOUND", "Guruh topilmadi"));
+        requireWorkspaceAccess(userId, group.getWorkspaceId());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("chat_id", group.getTelegramChatId());
+        JsonNode body = callTelegram("getChatAdministrators", payload);
+        for (JsonNode member : body.path("result")) {
+            JsonNode telegramUser = member.path("user");
+            if (telegramUser.path("is_bot").asBoolean(false)) continue;
+            Long telegramId = telegramUser.path("id").asLong();
+            String firstName = telegramUser.path("first_name").asText("Foydalanuvchi");
+            UserEntity user = userRepository.findByTelegramId(telegramId)
+                    .orElseGet(() -> userRepository.save(new UserEntity(telegramId, firstName)));
+            GroupMemberId memberId = new GroupMemberId(group.getId(), user.getId());
+            if (!groupMemberRepository.existsById(memberId)) {
+                groupMemberRepository.save(new GroupMemberEntity(group.getId(), user.getId()));
+            }
+        }
+        return new GroupResponse(group.getId(), group.getName(), groupMemberRepository.countByGroupId(group.getId()),
+                groupMembers(group.getId()), taskNotificationService.isBotMember(group.getTelegramChatId()),
+                taskNotificationService.botUsername(), group.getTaskCreationPolicy());
+    }
+
+    /** Unlinks the group from this workspace (soft delete) - the Telegram chat itself is untouched,
+     *  and the chat becomes available to re-link again via listAvailableTelegramGroups. */
+    @Transactional
+    public void unlink(Long userId, Long groupId) {
+        GroupEntity group = groupRepository.findById(groupId)
+                .filter(GroupEntity::isActive)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "GROUP_NOT_FOUND", "Guruh topilmadi"));
+        WorkspaceMemberEntity membership = workspaceMemberRepository
+                .findByWorkspaceIdAndUserIdAndActiveTrueAndTemporarilyBlockedFalse(group.getWorkspaceId(), userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED",
+                        "Ish maydoniga kirishga ruxsat yo'q"));
+        if (!"OWNER".equals(membership.getRoleCode())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GROUP_UNLINK_FORBIDDEN",
+                    "Faqat ish maydoni egasi guruhni o'chira oladi");
+        }
+        group.deactivate();
+    }
+
     @Transactional(readOnly = true)
     public void inviteMembers(Long userId, Long groupId) {
         GroupEntity group = groupRepository.findById(groupId)

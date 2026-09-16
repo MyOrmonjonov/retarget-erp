@@ -19,25 +19,27 @@ import {
   UserPlus,
 } from 'lucide-react';
 
+// `label` holds an i18n key (see shared/i18n/translations.ts), rendered via useT() - not literal
+// display text, so it's Uzbek-looking but must never be printed directly.
 export const NAV_ITEMS: NavItem[] = [
   {
-    label: 'ASOSIY',
+    label: 'nav.section_main',
     icon: LayoutDashboard,
     children: [
       {
-        label: 'Dashboard',
+        label: 'nav.dashboard',
         icon: LayoutDashboard,
         href: '/dashboard',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM', 'OPERATOR'],
       },
       {
-        label: 'Loyihalar',
+        label: 'nav.projects',
         icon: FolderKanban,
         href: '/projects',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM'],
       },
       {
-        label: 'Vazifalar',
+        label: 'nav.tasks',
         icon: CheckSquare,
         href: '/tasks',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM', 'OPERATOR'],
@@ -45,41 +47,41 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'JAMOA',
+    label: 'nav.section_team',
     icon: Users,
     children: [
       {
-        label: 'Hodimlar',
+        label: 'nav.employees',
         icon: Users,
         href: '/employees',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
       },
       {
-        label: 'Xodim profili',
+        label: 'nav.my_profile',
         icon: User,
         href: '/employees/profile',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM', 'OPERATOR'],
       },
       {
-        label: 'Davomat',
+        label: 'nav.attendance',
         icon: Calendar,
         href: '/attendance',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
       },
       {
-        label: 'KPI nazorat',
+        label: 'nav.kpi',
         icon: BarChart,
         href: '/kpi',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
       },
       {
-        label: 'Guruhlar',
+        label: 'nav.groups',
         icon: MessagesSquare,
         href: '/groups',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
       },
       {
-        label: 'Jamoa a\'zolari',
+        label: 'nav.team_members',
         icon: UserPlus,
         href: '/team-members',
         roles: ['CEO'],
@@ -87,23 +89,23 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'ISHLAB CHIQARISH',
+    label: 'nav.section_production',
     icon: Palette,
     children: [
       {
-        label: 'Dizayn bo\'limi',
+        label: 'nav.design_dept',
         icon: Palette,
         href: '/design-dept',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM'],
       },
       {
-        label: 'Montaj bo\'limi',
+        label: 'nav.editing_dept',
         icon: Video,
         href: '/editing-dept',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'MONTAJOR', 'HODIM'],
       },
       {
-        label: 'Syomka kalendari',
+        label: 'nav.shooting',
         icon: Camera,
         href: '/shooting',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI', 'HODIM'],
@@ -111,11 +113,11 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'SAVDO',
+    label: 'nav.section_sales',
     icon: Target,
     children: [
       {
-        label: 'Target bo\'limi',
+        label: 'nav.target',
         icon: Target,
         href: '/target',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
@@ -123,29 +125,29 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'BOSHQARUV',
+    label: 'nav.section_management',
     icon: CreditCard,
     children: [
       {
-        label: 'Moliya / to\'lovlar',
+        label: 'nav.finance',
         icon: CreditCard,
         href: '/finance',
         roles: ['CEO', 'MENEJER'],
       },
       {
-        label: 'Mapping (qadamlar)',
+        label: 'nav.mapping',
         icon: Map,
         href: '/mapping',
         roles: ['CEO', 'MENEJER', 'BOSHQARUVCHI'],
       },
       {
-        label: 'Hisobotlar',
+        label: 'nav.reports',
         icon: TrendingUp,
         href: '/reports',
         roles: ['CEO'],
       },
       {
-        label: 'Obuna / tarif',
+        label: 'nav.subscription',
         icon: Sparkles,
         href: '/subscription',
         roles: ['CEO'],

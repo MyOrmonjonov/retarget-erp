@@ -4,7 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  const isTelegram = mode === 'telegram';
+  const isTelegram = mode === 'telegram' || mode === 'telegram-debug';
+  const isDebug = mode === 'telegram-debug';
 
   return {
     plugins: [
@@ -42,6 +43,11 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: isTelegram ? 'dist-telegram' : 'dist',
       sourcemap: true,
+      minify: isDebug ? false : true,
+      // Telegram's own in-app webview (Desktop's Qt WebEngine, some mobile clients) can lag
+      // behind desktop Chrome - targeting a broader browser baseline makes esbuild downlevel
+      // newer syntax instead of assuming it's natively supported everywhere the Mini App runs.
+      target: ['chrome80', 'edge80', 'firefox78', 'safari13'],
       rollupOptions: {
         output: {
           manualChunks: {
@@ -57,6 +63,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'import.meta.env.VITE_TELEGRAM_MODE': JSON.stringify(isTelegram),
+      ...(isDebug ? { 'process.env.NODE_ENV': JSON.stringify('development') } : {}),
     },
   };
 });

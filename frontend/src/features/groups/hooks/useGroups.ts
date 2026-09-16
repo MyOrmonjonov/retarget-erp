@@ -64,3 +64,32 @@ export function useUpdateGroupRules() {
     },
   });
 }
+
+export function useSyncGroupMembers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: number) => groupsApi.syncMembers(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      toast.success("A'zolar yangilandi");
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || "A'zolarni yangilashda xatolik yuz berdi");
+    },
+  });
+}
+
+export function useUnlinkGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: number) => groupsApi.unlink(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groups', 'available'] });
+      toast.success("Guruh o'chirildi");
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || "Guruhni o'chirishda xatolik yuz berdi");
+    },
+  });
+}

@@ -1,12 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Menu, Building2, Check, LogOut, User, Settings, Plus, Pencil } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Bell, Menu, Building2, Check, Plus, Pencil } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Avatar } from '@/shared/ui/avatar';
-import { Badge } from '@/shared/ui/badge';
+import { ProfileMenuSheet } from './ProfileMenuSheet';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -25,18 +25,19 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSwitchWorkspace } from '@/features/auth/hooks/useAuth';
 import { WorkspaceForm } from '@/features/workspace/components/WorkspaceForm';
 import { useCreateWorkspace, useRenameWorkspace } from '@/features/workspace/hooks/useWorkspace';
-import { ROLE_LABELS } from '@/shared/types';
 import { getPageTitle } from '@/shared/constants/pageTitles';
+import { useT } from '@/shared/i18n/useT';
 
 export function Header() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isSidebarCollapsed, setMobileNavOpen, workspaces, activeWorkspaceId } = useAuthStore();
+  const t = useT();
+  const { user, isSidebarCollapsed, setMobileNavOpen, workspaces, activeWorkspaceId } = useAuthStore();
   const switchWorkspace = useSwitchWorkspace();
   const createWorkspace = useCreateWorkspace();
   const renameWorkspace = useRenameWorkspace();
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [workspaceFormMode, setWorkspaceFormMode] = React.useState<'create' | 'rename' | null>(null);
+  const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
   const handleWorkspaceFormSubmit = async (name: string) => {
@@ -46,11 +47,6 @@ export function Header() {
       await createWorkspace.mutateAsync(name);
     }
     setWorkspaceFormMode(null);
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
   };
 
   if (!user) return null;
@@ -78,7 +74,7 @@ export function Header() {
           </div>
 
           <h1 className="flex-1 text-[20px] font-bold text-[var(--color-text-primary)] truncate">
-            {getPageTitle(location.pathname)}
+            {t(getPageTitle(location.pathname))}
           </h1>
 
           {/* Right: Notifications + User Menu */}
@@ -93,7 +89,7 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="font-normal text-caption text-[var(--color-text-muted)]">
-                  Ish maydonlari
+                  {t('header.workspaces')}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {workspaces.map((workspace) => (
@@ -110,12 +106,12 @@ export function Header() {
                 {activeWorkspace?.role === 'OWNER' && (
                   <DropdownMenuItem onClick={() => setWorkspaceFormMode('rename')} className="gap-2">
                     <Pencil className="h-4 w-4" />
-                    Nomini o'zgartirish
+                    {t('header.rename_workspace')}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => setWorkspaceFormMode('create')} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Yangi ish maydoni
+                  {t('header.new_workspace')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -128,52 +124,26 @@ export function Header() {
                   size="icon"
                   className="h-6 w-6 rounded-md"
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  aria-label="Bildirishnomalar"
+                  aria-label={t('header.notifications')}
                   aria-expanded={notificationsOpen}
                 >
                   <Bell className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end">
-                Bildirishnomalar
+                {t('header.notifications')}
               </TooltipContent>
             </Tooltip>
 
-            {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="rounded-full" aria-label="Profil menyusi">
-                  <Avatar name={user.fullName} src={user.avatar} size="md" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-body font-medium text-[var(--color-text-primary)]">{user.fullName}</p>
-                    {user.email && <p className="text-caption text-[var(--color-text-muted)]">{user.email}</p>}
-                    <Badge variant="outline" className="w-fit">{ROLE_LABELS[user.role]}</Badge>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/employees/profile" className="flex w-full items-center gap-2" onClick={() => setNotificationsOpen(false)}>
-                    <User className="h-4 w-4" />
-                    Profilim
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings" className="flex w-full items-center gap-2" onClick={() => setNotificationsOpen(false)}>
-                    <Settings className="h-4 w-4" />
-                    Sozlamalar
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-[var(--color-error)] focus:text-[var(--color-error)]">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Tizimdan chiqish
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Profile - opens the settings sheet (theme, language, workspace, etc.) */}
+            <button
+              type="button"
+              onClick={() => setProfileMenuOpen(true)}
+              className="rounded-full"
+              aria-label={t('header.profile_settings')}
+            >
+              <Avatar name={user.fullName} src={user.avatar} size="md" />
+            </button>
           </div>
         </div>
       </header>
@@ -185,6 +155,8 @@ export function Header() {
         initialName={workspaceFormMode === 'rename' ? activeWorkspace?.name : undefined}
         isLoading={createWorkspace.isPending || renameWorkspace.isPending}
       />
+
+      <ProfileMenuSheet open={profileMenuOpen} onOpenChange={setProfileMenuOpen} />
     </TooltipProvider>
   );
 }

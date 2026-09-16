@@ -46,10 +46,14 @@ export function SettingsPage() {
     queryFn: preferencesApi.get,
   });
 
+  const setUiLanguage = useAuthStore((s) => s.setUiLanguage);
+  const setThemePreference = useAuthStore((s) => s.setThemePreference);
   const updatePreferences = useMutation({
     mutationFn: preferencesApi.update,
     onSuccess: (data) => {
       queryClient.setQueryData(['preferences'], data);
+      setUiLanguage(data.uiLanguage);
+      setThemePreference(data.theme);
       toast.success('Sozlamalar saqlandi');
     },
     onError: (error: { message?: string }) => toast.error(error.message || 'Xatolik yuz berdi'),

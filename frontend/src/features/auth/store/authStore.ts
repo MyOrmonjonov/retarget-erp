@@ -12,6 +12,10 @@ interface AuthState {
   isSidebarCollapsed: boolean;
   /** Mobile slide-over drawer open/closed - transient UI state, not persisted across reloads. */
   isMobileNavOpen: boolean;
+  /** Mirrors the backend's per-user preferences (uiLanguage/theme) so any component can read the
+   *  current choice synchronously - kept in sync by whichever screen loads /users/me/preferences. */
+  uiLanguage: string;
+  themePreference: string;
 
   // Actions
   setAuth: (user: User, accessToken: string, workspaces: AuthWorkspace[]) => void;
@@ -24,6 +28,8 @@ interface AuthState {
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   setMobileNavOpen: (open: boolean) => void;
+  setUiLanguage: (language: string) => void;
+  setThemePreference: (theme: string) => void;
 
   // Role helpers
   hasRole: (roles: UserRole[]) => boolean;
@@ -50,6 +56,8 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isSidebarCollapsed: false,
       isMobileNavOpen: false,
+      uiLanguage: 'uz',
+      themePreference: 'system',
 
       // Actions
       setAuth: (user, accessToken, workspaces) => {
@@ -112,6 +120,9 @@ export const useAuthStore = create<AuthState>()(
 
       setMobileNavOpen: (open) => set({ isMobileNavOpen: open }),
 
+      setUiLanguage: (language) => set({ uiLanguage: language }),
+      setThemePreference: (theme) => set({ themePreference: theme }),
+
       // Role helpers
       hasRole: (roles) => {
         const { user } = get();
@@ -136,6 +147,8 @@ export const useAuthStore = create<AuthState>()(
         activeWorkspaceId: state.activeWorkspaceId,
         isAuthenticated: state.isAuthenticated,
         isSidebarCollapsed: state.isSidebarCollapsed,
+        uiLanguage: state.uiLanguage,
+        themePreference: state.themePreference,
       }),
     }
   )

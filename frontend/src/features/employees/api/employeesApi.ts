@@ -22,7 +22,7 @@ interface EmployeeDto {
   completedTasks: number;
   overdueTasks: number;
   workload: number;
-  baseSalary: number;
+  baseSalary: number | null;
   kpiBase: number;
   createdAt: string;
   updatedAt: string;

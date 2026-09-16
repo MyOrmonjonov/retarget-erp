@@ -237,7 +237,7 @@ export interface Employee extends BaseEntity {
   completedTasks: number;
   overdueTasks: number;
   workload: number; // 0-100, ported from the reference CRM's Team page formula
-  baseSalary: number;
+  baseSalary: number | null; // null when the viewer lacks finance access (not CEO/MENEJER/OWNER)
   kpiBase: number; // 0-100 fallback KPI used by the Finance dashboard when nothing's assigned
 }
 

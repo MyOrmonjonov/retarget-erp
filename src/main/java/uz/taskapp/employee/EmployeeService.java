@@ -17,6 +17,7 @@ import uz.taskapp.task.TaskRepository;
 import uz.taskapp.task.TaskStatus;
 import uz.taskapp.user.UserEntity;
 import uz.taskapp.user.UserRepository;
+import uz.taskapp.workspace.WorkspaceMemberEntity;
 import uz.taskapp.workspace.WorkspaceMemberRepository;
 
 import java.math.BigDecimal;
@@ -51,15 +52,17 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public List<EmployeeResponse> list(Long currentUserId, Long workspaceId) {
         requireMembership(workspaceId, currentUserId);
+        boolean financeAccess = hasFinanceAccess(workspaceId, currentUserId);
         return employeeRepository.findAllByWorkspaceId(workspaceId).stream()
-                .map(profile -> toResponse(workspaceId, profile))
+                .map(profile -> toResponse(workspaceId, profile, financeAccess))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public EmployeeResponse detail(Long currentUserId, Long workspaceId, Long employeeId) {
         requireMembership(workspaceId, currentUserId);
-        return toResponse(workspaceId, findWithinWorkspace(employeeId, workspaceId));
+        boolean financeAccess = hasFinanceAccess(workspaceId, currentUserId);
+        return toResponse(workspaceId, findWithinWorkspace(employeeId, workspaceId), financeAccess);
     }
 
     @Transactional
@@ -74,7 +77,7 @@ public class EmployeeService {
                 request.orgRole(), request.department(), request.position(), request.hireDate(),
                 request.email(), request.phone());
         profile = employeeRepository.save(profile);
-        return toResponse(request.workspaceId(), profile);
+        return toResponse(request.workspaceId(), profile, hasFinanceAccess(request.workspaceId(), currentUserId));
     }
 
     @Transactional
@@ -83,7 +86,7 @@ public class EmployeeService {
         EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
         profile.update(request.orgRole(), request.department(), request.position(), request.hireDate(),
                 request.email(), request.phone());
-        return toResponse(workspaceId, profile);
+        return toResponse(workspaceId, profile, hasFinanceAccess(workspaceId, currentUserId));
     }
 
     @Transactional
@@ -91,23 +94,23 @@ public class EmployeeService {
         requireMembership(workspaceId, currentUserId);
         EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
         profile.changeStatus(status);
-        return toResponse(workspaceId, profile);
+        return toResponse(workspaceId, profile, hasFinanceAccess(workspaceId, currentUserId));
     }
 
     @Transactional
     public EmployeeResponse updateSalary(Long currentUserId, Long workspaceId, Long employeeId, BigDecimal baseSalary) {
-        requireMembership(workspaceId, currentUserId);
+        requireFinanceAccess(workspaceId, currentUserId);
         EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
         profile.updateSalary(baseSalary);
-        return toResponse(workspaceId, profile);
+        return toResponse(workspaceId, profile, true);
     }
 
     @Transactional
     public EmployeeResponse updateKpiBase(Long currentUserId, Long workspaceId, Long employeeId, int kpiBase) {
-        requireMembership(workspaceId, currentUserId);
+        requireFinanceAccess(workspaceId, currentUserId);
         EmployeeProfileEntity profile = findWithinWorkspace(employeeId, workspaceId);
         profile.updateKpiBase(kpiBase);
-        return toResponse(workspaceId, profile);
+        return toResponse(workspaceId, profile, true);
     }
 
     @Transactional
@@ -116,7 +119,7 @@ public class EmployeeService {
         employeeRepository.delete(findWithinWorkspace(employeeId, workspaceId));
     }
 
-    private EmployeeResponse toResponse(Long workspaceId, EmployeeProfileEntity profile) {
+    private EmployeeResponse toResponse(Long workspaceId, EmployeeProfileEntity profile, boolean financeAccess) {
         UserEntity user = userRepository.findById(profile.getUserId()).orElse(null);
         String fullName = user == null ? "Noma'lum" : displayName(user);
         String avatar = user == null ? null : user.getPhotoUrl();
@@ -157,7 +160,7 @@ public class EmployeeService {
                 .count();
 
         return EmployeeResponse.from(profile, fullName, avatar, kpiScore, projectCount, taskCount, activeTasks,
-                completedTasks, overdueTasks, projectNames);
+                completedTasks, overdueTasks, projectNames, financeAccess);
     }
 
     private String displayName(UserEntity user) {
@@ -175,6 +178,31 @@ public class EmployeeService {
     private void requireMembership(Long workspaceId, Long userId) {
         if (!memberRepository.existsByWorkspaceIdAndUserIdAndActiveTrueAndTemporarilyBlockedFalse(workspaceId, userId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED", "Ish maydoniga kirishga ruxsat yo'q");
+        }
+    }
+
+    /** Mirrors FinanceDashboardService's access rule: workspace OWNER, or CEO/MENEJER org role -
+     *  base salary is sensitive and must not leak to (or be editable by) regular employees. */
+    private boolean hasFinanceAccess(Long workspaceId, Long userId) {
+        WorkspaceMemberEntity membership = memberRepository
+                .findByWorkspaceIdAndUserIdAndActiveTrueAndTemporarilyBlockedFalse(workspaceId, userId)
+                .orElse(null);
+        if (membership == null) {
+            return false;
+        }
+        if ("OWNER".equals(membership.getRoleCode())) {
+            return true;
+        }
+        OrgRole orgRole = employeeRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+                .map(EmployeeProfileEntity::getOrgRole)
+                .orElse(null);
+        return orgRole == OrgRole.CEO || orgRole == OrgRole.MENEJER;
+    }
+
+    private void requireFinanceAccess(Long workspaceId, Long userId) {
+        if (!hasFinanceAccess(workspaceId, userId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "FINANCE_ACCESS_DENIED",
+                    "Maosh ma'lumotlarini o'zgartirish uchun ruxsat yo'q");
         }
     }
 }

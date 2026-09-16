@@ -1,9 +1,23 @@
 'use client';
 
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useRouteError, isRouteErrorResponse } from 'react-router-dom';
 import { Button } from '@/shared/ui/button';
 
 export function NotFoundPage() {
+  const error = useRouteError();
+  // This component doubles as the router's errorElement, so a genuine thrown exception during
+  // render (a bug) lands here too, not just an actual unmatched path - log it to the console
+  // for debugging without showing raw error text to the viewer.
+  const thrownError = error && !isRouteErrorResponse(error) ? error : null;
+
+  useEffect(() => {
+    if (thrownError) {
+      // eslint-disable-next-line no-console
+      console.error('Unhandled render error:', thrownError);
+    }
+  }, [thrownError]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] px-4">
       <div className="text-center">

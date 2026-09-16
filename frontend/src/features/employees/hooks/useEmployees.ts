@@ -80,3 +80,19 @@ export function useChangeEmployeeStatus() {
     },
   });
 }
+
+/** Sets an employee's KPI base - the score used when they have no assigned tasks in a period,
+ *  since a completion-rate formula (done/assigned) is undefined at zero. CEO/MENEJER/OWNER only. */
+export function useUpdateKpiBase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, kpiBase }: { id: string; kpiBase: number }) => employeesApi.updateKpiBase(id, kpiBase),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('KPI bazasi yangilandi');
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || "KPI bazasini yangilashda xatolik yuz berdi");
+    },
+  });
+}

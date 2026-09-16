@@ -1,23 +1,25 @@
+// Values are i18n keys (see shared/i18n/translations.ts), resolved via useT() in Header - not
+// literal display text.
 export const PAGE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
-  '/dashboard': 'Dashboard',
-  '/projects': 'Loyihalar',
-  '/tasks': 'Vazifalar',
-  '/employees': 'Hodimlar',
-  '/employees/profile': 'Mening profilim',
-  '/attendance': 'Davomat',
-  '/kpi': 'KPI nazorat',
-  '/groups': 'Guruhlar',
-  '/design-dept': "Dizayn bo'limi",
-  '/editing-dept': "Montaj bo'limi",
-  '/shooting': 'Syomka kalendari',
-  '/target': "Target bo'limi",
-  '/finance': 'Moliyaviy Dashboard',
-  '/mapping': 'Mapping (qadamlar)',
-  '/reports': 'Hisobotlar',
-  '/settings': 'Sozlamalar',
+  '/': 'nav.dashboard',
+  '/dashboard': 'nav.dashboard',
+  '/projects': 'nav.projects',
+  '/tasks': 'nav.tasks',
+  '/employees': 'nav.employees',
+  '/employees/profile': 'page.my_profile',
+  '/attendance': 'nav.attendance',
+  '/kpi': 'nav.kpi',
+  '/groups': 'nav.groups',
+  '/design-dept': 'nav.design_dept',
+  '/editing-dept': 'nav.editing_dept',
+  '/shooting': 'nav.shooting',
+  '/target': 'nav.target',
+  '/finance': 'page.finance_dashboard',
+  '/mapping': 'nav.mapping',
+  '/reports': 'nav.reports',
+  '/settings': 'page.settings',
 };
 
 export function getPageTitle(pathname: string): string {
-  return PAGE_TITLES[pathname] ?? 'Retarget ERP';
+  return PAGE_TITLES[pathname] ?? 'page.default';
 }

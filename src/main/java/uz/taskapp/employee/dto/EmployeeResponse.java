@@ -37,7 +37,8 @@ public record EmployeeResponse(
 ) {
     public static EmployeeResponse from(EmployeeProfileEntity profile, String fullName, String avatar,
                                          Integer kpiScore, long projectCount, long taskCount, long activeTasks,
-                                         long completedTasks, long overdueTasks, List<String> projectNames) {
+                                         long completedTasks, long overdueTasks, List<String> projectNames,
+                                         boolean financeAccess) {
         // Ported from the reference CRM's Team page: workload = clamp(active*18 + projects*10, 0, 100) -
         // a fixed-weight formula, distinct from Dashboard's team-load which normalizes against the team's
         // own max instead of fixed weights.
@@ -62,7 +63,7 @@ public record EmployeeResponse(
                 completedTasks,
                 overdueTasks,
                 workload,
-                profile.getBaseSalary(),
+                financeAccess ? profile.getBaseSalary() : null,
                 profile.getKpiBase(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt(),

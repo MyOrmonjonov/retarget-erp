@@ -9,10 +9,11 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Progress } from '@/shared/ui/progress';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { StatCard } from '@/shared/components/StatCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Settings, TrendingUp, TrendingDown, Users } from 'lucide-react';
-import { useEmployees } from '../hooks/useEmployees';
+import { useEmployees, useUpdateKpiBase } from '../hooks/useEmployees';
 import { kpiApi } from '../api/kpiApi';
 
 function currentPeriod(offset = 0): string {
@@ -118,46 +119,77 @@ export function KPIPage() {
       </Card>
 
       {/* KPI Config Modal */}
-      <KPIConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+      <KPIConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} employees={employees} />
     </div>
   );
 }
 
-function KPIConfigModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+/** Inline-editable KPI base, committed on blur/Enter (mirrors EmployeesPage's salary editor). */
+function KpiBaseField({ value, onSave }: { value: number; onSave: (next: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  const commit = () => {
+    const parsed = Number(draft);
+    if (Number.isNaN(parsed) || parsed < 0 || parsed > 100 || parsed === value) {
+      setDraft(String(value));
+      return;
+    }
+    onSave(parsed);
+  };
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm ${
-        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}
-      onClick={onClose}
-    >
-      <div
-        className="bg-[var(--color-bg-surface)] rounded-xl shadow-2xl w-full max-w-sm animate-in slide-in-from-top-4 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[var(--color-bg-border)]">
-          <h2 className="text-h3">KPI konfiguratsiyasi</h2>
-          <Badge variant="error" size="sm">Faqat CEO</Badge>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-          className="p-4 space-y-4"
-        >
-          <p className="text-caption text-[var(--color-text-secondary)]">
-            Har 10% bajarilgan KPI necha % ga oshiriladi
-          </p>
-          <Input name="baseShare" type="number" label="Baza ulushi (%)" defaultValue={40} required />
-          <Input name="kpiShare" type="number" label="KPI ulushi (%)" defaultValue={50} required />
-          <Input name="bonusPer10" type="number" label="Har 10% KPI → bonus (%)" defaultValue={5} required />
-          <Input name="earlyBonus" type="number" label="Muddatdan oldin bonus (%)" defaultValue={10} required />
-          <div className="pt-2">
-            <Button type="submit" variant="primary" className="w-full">Saqlash</Button>
+    <Input
+      type="number"
+      min={0}
+      max={100}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      className="w-20 h-8 text-caption"
+    />
+  );
+}
+
+function KPIConfigModal({ isOpen, onClose, employees }: {
+  isOpen: boolean;
+  onClose: () => void;
+  employees: { id: string | number; fullName: string; avatar?: string; department: string; kpiBase: number }[];
+}) {
+  const updateKpiBase = useUpdateKpiBase();
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <DialogTitle>KPI bazasi sozlamalari</DialogTitle>
+            <Badge variant="error" size="sm">Faqat CEO</Badge>
           </div>
-        </form>
-      </div>
-    </div>
+        </DialogHeader>
+        <p className="text-caption text-[var(--color-text-secondary)]">
+          Xodimga vazifa biriktirilmagan davrda ishlatiladigan KPI bazasi - har xodim uchun alohida
+          belgilanadi, chunki lavozim va yuklamaga qarab KPI talablari har xil bo'ladi.
+        </p>
+        <div className="space-y-1 max-h-96 overflow-y-auto">
+          {employees.length === 0 ? (
+            <EmptyState icon={Users} title="Xodimlar topilmadi" className="py-4" />
+          ) : (
+            employees.map((emp) => (
+              <div key={emp.id} className="flex items-center gap-3 py-2 border-b border-[var(--color-bg-border)] last:border-0">
+                <Avatar name={emp.fullName} src={emp.avatar} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-body font-medium text-[var(--color-text-primary)] truncate">{emp.fullName}</p>
+                  <p className="text-caption text-[var(--color-text-muted)] truncate">{emp.department || '—'}</p>
+                </div>
+                <KpiBaseField
+                  value={emp.kpiBase}
+                  onSave={(next) => updateKpiBase.mutate({ id: String(emp.id), kpiBase: next })}
+                />
+                <span className="text-caption text-[var(--color-text-muted)]">%</span>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -28,6 +28,12 @@ import { ReportsPage } from '@/features/reports/pages/ReportsPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 import { SubscriptionPage } from '@/features/subscription/pages/SubscriptionPage';
 import { PaymentPage } from '@/features/subscription/pages/PaymentPage';
+import { AdminLoginPage } from '@/features/admin/pages/AdminLoginPage';
+import { AdminDashboardPage } from '@/features/admin/pages/AdminDashboardPage';
+import { AdminTenantsPage } from '@/features/admin/pages/AdminTenantsPage';
+import { AdminTenantDetailPage } from '@/features/admin/pages/AdminTenantDetailPage';
+import { AdminLayout } from '@/features/admin/components/AdminLayout';
+import { RequireAdminAuth } from '@/features/admin/routes/RequireAdminAuth';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +43,23 @@ const router = createBrowserRouter([
       {
         path: '/login',
         element: <AuthGatePage />,
+      },
+      {
+        path: '/admin/login',
+        element: <AdminLoginPage />,
+      },
+      {
+        path: '/admin',
+        element: (
+          <RequireAdminAuth>
+            <AdminLayout />
+          </RequireAdminAuth>
+        ),
+        children: [
+          { index: true, element: <AdminDashboardPage /> },
+          { path: 'tenants', element: <AdminTenantsPage /> },
+          { path: 'tenants/:id', element: <AdminTenantDetailPage /> },
+        ],
       },
       {
         element: <Layout />,

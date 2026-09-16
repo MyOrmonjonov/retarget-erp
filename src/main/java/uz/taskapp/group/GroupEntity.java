@@ -92,6 +92,11 @@ public class GroupEntity {
         this.updatedAt = Instant.now();
     }
 
+    public void deactivate() {
+        this.active = false;
+        this.updatedAt = Instant.now();
+    }
+
     public Long getId() { return id; }
     public Long getWorkspaceId() { return workspaceId; }
     public String getName() { return name; }

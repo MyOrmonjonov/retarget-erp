@@ -166,6 +166,7 @@ export function TasksPage() {
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
+  const [createDefaultStatus, setCreateDefaultStatus] = useState<TaskStatus | undefined>(undefined);
   const [isFormLoading, setIsFormLoading] = useState(false);
 
   // Delete confirmation states
@@ -195,7 +196,8 @@ export function TasksPage() {
   const tomorrowTasks = filteredTasks.filter((t) => isSameDay(t.dueDate, tomorrow));
   const otherTasks = filteredTasks.filter((t) => !isSameDay(t.dueDate, today) && !isSameDay(t.dueDate, tomorrow));
 
-  const handleOpenCreateForm = useCallback(() => {
+  const handleOpenCreateForm = useCallback((status?: TaskStatus) => {
+    setCreateDefaultStatus(status);
     setEditingTask(null);
     setIsFormOpen(true);
   }, []);
@@ -217,6 +219,7 @@ export function TasksPage() {
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
     setEditingTask(null);
+    setCreateDefaultStatus(undefined);
   }, []);
 
   const handleFormSubmit = useCallback(async (data: TaskFormData) => {
@@ -256,7 +259,7 @@ export function TasksPage() {
   return (
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-end">
-        <Button variant="primary" onClick={handleOpenCreateForm}>
+        <Button variant="primary" onClick={() => handleOpenCreateForm()}>
           <Plus className="h-4 w-4" />
           Yangi vazifa
         </Button>
@@ -319,6 +322,7 @@ export function TasksPage() {
           tasks={filteredTasks}
           onTaskMove={handleMove}
           onTaskClick={handleOpenEditForm}
+          onAddTask={handleOpenCreateForm}
           onChangeStatus={handleMove}
           onDeleteTask={(task) => handleOpenDelete(task as TaskListItem)}
         />
@@ -375,6 +379,7 @@ export function TasksPage() {
         onClose={handleCloseForm}
         onSubmit={handleFormSubmit}
         initialData={editingTask}
+        defaultStatus={createDefaultStatus}
         isLoading={isFormLoading || createTask.isPending || updateTask.isPending}
         assignees={assigneeOptions}
         groups={groups}

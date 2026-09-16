@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { api } from '@/shared/lib/api';
 import { getTelegramInitData } from '@/shared/lib/telegram';
 import { authApi } from '../api/authApi';
+import { preferencesApi } from '@/features/settings/api/preferencesApi';
 import { useAuthStore } from '../store/authStore';
 import type { TelegramAuthResponse, UserRole } from '@/shared/types';
 
@@ -85,6 +86,48 @@ export function useSyncEmployeeRole() {
     // updateUser() (called inside) produces a new `user` object reference - that would loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, activeWorkspaceId]);
+}
+
+/** Loads the user's saved language/theme once per session and keeps <html data-theme> in sync -
+ *  runs in Layout so it applies before any page-specific fetch, not just once the settings
+ *  sheet has been opened. */
+export function useSyncPreferences() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const uiLanguage = useAuthStore((s) => s.uiLanguage);
+  const themePreference = useAuthStore((s) => s.themePreference);
+  const setUiLanguage = useAuthStore((s) => s.setUiLanguage);
+  const setThemePreference = useAuthStore((s) => s.setThemePreference);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    preferencesApi.get().then((prefs) => {
+      if (cancelled) return;
+      setUiLanguage(prefs.uiLanguage);
+      setThemePreference(prefs.theme);
+    }).catch(() => {
+      // Keep whatever was already persisted locally - preferences just stay unsynced this session.
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Runs once per login, not on every uiLanguage/themePreference change (those are set BY this
+    // effect and by the settings sheet) - re-running on them would refetch in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themePreference === 'dark' || themePreference === 'light') {
+      root.setAttribute('data-theme', themePreference);
+    } else {
+      root.removeAttribute('data-theme');
+    }
+  }, [themePreference]);
+
+  useEffect(() => {
+    document.documentElement.lang = uiLanguage;
+  }, [uiLanguage]);
 }
 
 export function useSwitchWorkspace() {

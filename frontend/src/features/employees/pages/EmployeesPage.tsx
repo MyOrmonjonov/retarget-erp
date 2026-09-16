@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/shared/ui/card';
@@ -86,6 +87,7 @@ export function EmployeesPage() {
   const user = useUser();
   const isCeo = user?.role === 'CEO';
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const salaryMutation = useMutation({
     mutationFn: ({ id, baseSalary }: { id: string; baseSalary: number }) => employeesApi.updateSalary(id, baseSalary),
@@ -216,7 +218,15 @@ export function EmployeesPage() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-3 mb-3">
-                      <Avatar name={emp.fullName} src={emp.avatar} size="lg" />
+                      <button
+                        type="button"
+                        onClick={() => emp.userId === user?.id && navigate('/employees/profile')}
+                        disabled={emp.userId !== user?.id}
+                        className={emp.userId === user?.id ? 'rounded-full cursor-pointer' : 'cursor-default'}
+                        aria-label={emp.userId === user?.id ? 'Profilimga o\'tish' : undefined}
+                      >
+                        <Avatar name={emp.fullName} src={emp.avatar} size="lg" />
+                      </button>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-[var(--color-text-primary)] truncate">{emp.fullName}</p>
                         <p className="text-caption text-[var(--color-text-secondary)] truncate">
@@ -254,7 +264,7 @@ export function EmployeesPage() {
                         <div>
                           <p className="text-caption text-[var(--color-text-muted)] mb-1">Maosh</p>
                           <InlineNumberField
-                            value={emp.baseSalary}
+                            value={emp.baseSalary ?? 0}
                             onSave={(next) => salaryMutation.mutate({ id: String(emp.id), baseSalary: next })}
                             suffix="so'm"
                           />

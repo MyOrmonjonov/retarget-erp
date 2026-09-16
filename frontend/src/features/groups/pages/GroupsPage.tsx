@@ -6,16 +6,20 @@ import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Avatar } from '@/shared/ui/avatar';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { MessagesSquare, Plus, Send, Users, AlertTriangle, Link2 } from 'lucide-react';
+import { MessagesSquare, Plus, Send, Users, AlertTriangle, Link2, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { groupsApi, type Group } from '../api/groupsApi';
-import { useGroups, useAvailableGroups, useLinkGroup, useInviteGroupMembers, useUpdateGroupRules } from '../hooks/useGroups';
+import { useGroups, useAvailableGroups, useLinkGroup, useInviteGroupMembers, useUpdateGroupRules, useUnlinkGroup, useSyncGroupMembers } from '../hooks/useGroups';
 import { getTelegramWebApp } from '@/shared/lib/telegram';
 import { useQueryClient } from '@tanstack/react-query';
+import { DeleteConfirmation } from '@/shared/components/DeleteConfirmation';
 
 function GroupCard({ group }: { group: Group }) {
   const inviteMembers = useInviteGroupMembers();
   const updateRules = useUpdateGroupRules();
+  const unlinkGroup = useUnlinkGroup();
+  const syncMembers = useSyncGroupMembers();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   return (
     <Card className="p-5 space-y-4">
@@ -31,12 +35,36 @@ function GroupCard({ group }: { group: Group }) {
             </p>
           </div>
         </div>
-        {!group.botConnected && (
-          <Badge variant="error" className="flex-shrink-0 gap-1">
-            <AlertTriangle className="h-3 w-3" /> Bot guruhda yo'q
-          </Badge>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!group.botConnected && (
+            <Badge variant="error" className="gap-1">
+              <AlertTriangle className="h-3 w-3" /> Bot guruhda yo'q
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setConfirmDeleteOpen(true)}
+            aria-label="Guruhni o'chirish"
+          >
+            <Trash2 className="h-4 w-4 text-[var(--color-error)]" />
+          </Button>
+        </div>
       </div>
+
+      <DeleteConfirmation
+        isOpen={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={async () => {
+          await unlinkGroup.mutateAsync(group.id);
+          setConfirmDeleteOpen(false);
+        }}
+        isLoading={unlinkGroup.isPending}
+        title="Guruhni o'chirish"
+        description="Guruh ish maydonidan uziladi. Telegram guruhining o'zi o'zgarmaydi, kerak bo'lsa qayta ulash mumkin."
+        itemName={group.title}
+      />
 
       {group.memberList.length > 0 && (
         <div className="flex -space-x-2">
@@ -68,15 +96,25 @@ function GroupCard({ group }: { group: Group }) {
             </button>
           ))}
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="mt-3 flex-shrink-0"
-          onClick={() => inviteMembers.mutate(group.id)}
-          disabled={inviteMembers.isPending}
-        >
-          <Send className="h-3.5 w-3.5" /> Taklif
-        </Button>
+        <div className="flex items-center gap-2 mt-3 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => syncMembers.mutate(group.id)}
+            disabled={syncMembers.isPending}
+            title="Guruh adminlarini qayta o'qish"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> A'zolarni yangilash
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => inviteMembers.mutate(group.id)}
+            disabled={inviteMembers.isPending}
+          >
+            <Send className="h-3.5 w-3.5" /> Taklif
+          </Button>
+        </div>
       </div>
     </Card>
   );

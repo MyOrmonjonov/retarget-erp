@@ -59,4 +59,5 @@ public class WorkspaceEntity {
     public String getDefaultLanguage() { return defaultLanguage; }
     public boolean isArchived() { return archived; }
     public Long getOwnerId() { return ownerId; }
+    public Instant getCreatedAt() { return createdAt; }
 }

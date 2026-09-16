@@ -1,17 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Avatar } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
-import { Progress } from '@/shared/ui/progress';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { EmptyState } from '@/shared/components/EmptyState';
-import { Trophy } from 'lucide-react';
+import { CircularProgress } from '@/shared/components/CircularProgress';
+import { MonthCalendar } from '@/shared/components/MonthCalendar';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { ROLE_LABELS } from '@/shared/types';
+import { ROLE_LABELS, type AttendanceStatus } from '@/shared/types';
 import { useEmployees } from '../hooks/useEmployees';
 import { attendanceApi } from '../api/attendanceApi';
 import { kpiApi } from '../api/kpiApi';
@@ -21,10 +21,20 @@ function currentPeriod(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function monthRange(): [Date, Date] {
-  const now = new Date();
-  return [new Date(now.getFullYear(), now.getMonth(), 1), now];
-}
+const ATTENDANCE_MARKER: Partial<Record<AttendanceStatus, 'success' | 'warning' | 'error'>> = {
+  PRESENT: 'success',
+  LATE: 'warning',
+  ABSENT: 'error',
+};
+
+const ATTENDANCE_LABEL: Record<AttendanceStatus, string> = {
+  PRESENT: "To'liq",
+  LATE: 'Kechikdi',
+  EARLY_LEAVE: 'Erta ketdi',
+  REMOTE: 'Masofaviy',
+  ON_LEAVE: "Ta'tilda",
+  ABSENT: "Kelmagan",
+};
 
 export function EmployeeProfilePage() {
   const { user } = useAuthStore();
@@ -39,13 +49,25 @@ export function EmployeeProfilePage() {
   });
   const myKpi = kpiRecords.find((r) => String(r.employeeId) === user?.id);
 
-  const [from, to] = monthRange();
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const monthKey = format(visibleMonth, 'yyyy-MM');
   const { data: myAttendance = [], isLoading: attendanceLoading } = useQuery({
-    queryKey: ['attendance', 'me', currentPeriod()],
-    queryFn: () => attendanceApi.listForEmployeeRange(user!.id, from, to),
+    queryKey: ['attendance', 'me', monthKey],
+    queryFn: () => attendanceApi.listForEmployeeRange(user!.id, startOfMonth(visibleMonth), endOfMonth(visibleMonth)),
     enabled: !!user,
   });
   const todayRecord = myAttendance.find((r) => r.date === new Date().toISOString().slice(0, 10));
+  const selectedDayKey = format(selectedDay, 'yyyy-MM-dd');
+  const selectedRecord = myAttendance.find((r) => r.date === selectedDayKey);
+  const attendanceMarkers = useMemo(() => {
+    const markers: Record<string, 'success' | 'warning' | 'error'> = {};
+    for (const record of myAttendance) {
+      const marker = ATTENDANCE_MARKER[record.status];
+      if (marker) markers[record.date] = marker;
+    }
+    return markers;
+  }, [myAttendance]);
 
   const checkInMutation = useMutation({
     mutationFn: () => attendanceApi.checkIn(user!.id, new Date().toTimeString().slice(0, 5)),
@@ -71,12 +93,6 @@ export function EmployeeProfilePage() {
     const absent = myAttendance.filter((r) => r.status === 'ABSENT').length;
     return { full, late, absent };
   }, [myAttendance]);
-
-  const teamRating = useMemo(() => {
-    return employees
-      .map((e) => ({ id: e.id, name: e.fullName, score: e.kpiScore ?? 0, isMe: String((e as { userId?: string }).userId) === user?.id }))
-      .sort((a, b) => b.score - a.score);
-  }, [employees, user?.id]);
 
   const fullName = user?.fullName ?? '';
   const department = me?.department || "Bo'lim ko'rsatilmagan";
@@ -134,10 +150,9 @@ export function EmployeeProfilePage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>
-          <CardContent className="p-5">
+          <CardContent className="p-5 flex items-center gap-4">
+            <CircularProgress value={kpiScore} size={64} strokeWidth={5} variant="accent" />
             <p className="text-caption text-[var(--color-text-secondary)]">KPI progress</p>
-            <p className="mt-1 text-h2 text-[var(--color-accent)]">{kpiScore}%</p>
-            <Progress value={kpiScore} max={100} variant="accent" size="sm" className="mt-3" />
           </CardContent>
         </Card>
         <Card>
@@ -156,27 +171,40 @@ export function EmployeeProfilePage() {
         </Card>
       </div>
 
-      {/* Team Rating */}
+      {/* Work-time history */}
       <Card>
         <CardHeader>
-          <CardTitle>Jamoa reytingi</CardTitle>
+          <CardTitle>Ish vaqti tarixi</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {teamRating.length === 0 ? (
-            <EmptyState icon={Trophy} title="Ma'lumot yo'q" className="py-4" />
-          ) : (
-            teamRating.map((row, i) => (
-              <div key={row.id}>
-                <div className="flex items-center justify-between text-caption mb-1">
-                  <span className={row.isMe ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-primary)]'}>
-                    {i + 1}. {row.name} — {row.score}%
-                    {row.isMe && ' (siz)'}
-                  </span>
-                </div>
-                <Progress value={row.score} max={100} variant="accent" size="sm" />
+        <CardContent className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
+          <MonthCalendar
+            selected={selectedDay}
+            onSelect={setSelectedDay}
+            markers={attendanceMarkers}
+            onMonthChange={setVisibleMonth}
+          />
+          <div>
+            <p className="text-body font-semibold text-[var(--color-text-primary)] capitalize mb-3">
+              {format(selectedDay, 'd-MMMM yyyy')}
+            </p>
+            {attendanceLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : selectedRecord ? (
+              <div className="space-y-2 text-caption">
+                <p className="text-[var(--color-text-secondary)]">
+                  Ish boshlandi: <span className="text-[var(--color-text-primary)] font-medium">{selectedRecord.checkIn ?? '—'}</span>
+                </p>
+                <p className="text-[var(--color-text-secondary)]">
+                  Ish yakunlandi: <span className="text-[var(--color-text-primary)] font-medium">{selectedRecord.checkOut ?? '—'}</span>
+                </p>
+                <p className="text-[var(--color-text-secondary)]">
+                  Status: <span className="text-[var(--color-text-primary)] font-medium">{ATTENDANCE_LABEL[selectedRecord.status]}</span>
+                </p>
               </div>
-            ))
-          )}
+            ) : (
+              <p className="text-caption text-[var(--color-text-muted)]">Bu kun uchun yozuv yo'q</p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

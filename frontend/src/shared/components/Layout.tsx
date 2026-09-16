@@ -5,11 +5,13 @@ import { cn } from '@/shared/lib/utils';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { useSyncEmployeeRole } from '@/features/auth/hooks/useAuth';
+import { useSyncEmployeeRole, useSyncPreferences } from '@/features/auth/hooks/useAuth';
+import { DebugErrorBoundary } from '@/app/routes/DebugErrorBoundary';
 
 export function Layout() {
   const { isSidebarCollapsed } = useAuthStore();
   useSyncEmployeeRole();
+  useSyncPreferences();
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
@@ -24,7 +26,9 @@ export function Layout() {
         role="main"
       >
         <div className="p-4 lg:p-6 max-w-[1800px] mx-auto">
-          <Outlet />
+          <DebugErrorBoundary>
+            <Outlet />
+          </DebugErrorBoundary>
         </div>
       </main>
     </div>

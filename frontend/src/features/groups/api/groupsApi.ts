@@ -72,4 +72,13 @@ export const groupsApi = {
     const response = await api.patch<Group>(`/groups/${groupId}/rules`, { taskCreationPolicy });
     return response.data;
   },
+
+  unlink: async (groupId: number): Promise<void> => {
+    await api.delete(`/groups/${groupId}`);
+  },
+
+  syncMembers: async (groupId: number): Promise<Group> => {
+    const response = await api.post<Group>(`/groups/${groupId}/sync-members`);
+    return response.data;
+  },
 };
