@@ -182,6 +182,7 @@ public class TaskService {
         assigneeRepository.saveAll(assigneeIds.stream()
                 .map(userId -> new TaskAssigneeEntity(task.getId(), userId)).toList());
         persistChecklistItems(task.getId(), currentUserId, request.checklist());
+        persistLinks(task.getId(), request.links());
         replaceReminder(task, currentUserId, request.reminderMinutes());
         persistFiles(task.getId(), currentUserId, files);
         insertHistory(task.getId(), currentUserId, "CREATED", "{\"title\":\"" + jsonEscape(task.getTitle()) + "\"}");
@@ -415,6 +416,9 @@ public class TaskService {
 
         if (request.checklist() != null) {
             replaceChecklistItems(taskId, currentUserId, request.checklist());
+        }
+        if (request.links() != null) {
+            replaceLinks(taskId, request.links());
         }
         if (Boolean.TRUE.equals(request.reminderProvided())) {
             replaceReminder(task, currentUserId, request.reminderMinutes());
@@ -738,7 +742,8 @@ public class TaskService {
                 task.getSequenceNumber(), task.getFormat(), task.getPlatform(), task.getRevisionCount(),
                 task.getFinishedAt(), task.getApprovedBy() == null ? null : displayName(task.getApprovedBy()),
                 task.getProjectId(), projectName(task), task.getParentTaskId(),
-                includeDetails ? subtasks(task.getId()) : List.of());
+                includeDetails ? subtasks(task.getId()) : List.of(),
+                includeDetails ? linksFor(task.getId()) : List.of());
     }
 
     private List<TaskSubtaskResponse> subtasks(Long parentTaskId) {
@@ -830,6 +835,27 @@ public class TaskService {
         if (checklistItems == null || checklistItems.isEmpty()) {
             insertHistory(taskId, actorId, "CHECKLIST_UPDATED", "{\"items\":0}");
         }
+    }
+
+    /** Reference URLs on a task (Dizayn bo'limi "Havolalar") - capped at 5, same as the
+     *  reference CRM enforces client-side. Blank entries are dropped. */
+    private void persistLinks(Long taskId, List<String> links) {
+        if (links == null || links.isEmpty()) return;
+        List<String> cleaned = links.stream().filter(url -> url != null && !url.isBlank())
+                .map(String::trim).limit(5).toList();
+        IntStream.range(0, cleaned.size()).forEach(index -> jdbcTemplate.update(
+                "INSERT INTO task_links(task_id, url, position) VALUES (?, ?, ?)",
+                taskId, cleaned.get(index), index));
+    }
+
+    private void replaceLinks(Long taskId, List<String> links) {
+        jdbcTemplate.update("DELETE FROM task_links WHERE task_id = ?", taskId);
+        persistLinks(taskId, links);
+    }
+
+    private List<String> linksFor(Long taskId) {
+        return jdbcTemplate.query("SELECT url FROM task_links WHERE task_id = ? ORDER BY position, id",
+                (rs, rowNum) -> rs.getString("url"), taskId);
     }
 
     private void replaceReminder(TaskEntity task, Long actorId, Integer minutesBefore) {
@@ -1150,7 +1176,7 @@ public class TaskService {
                                Instant archivedAt, Long sequenceNumber, String format, String platform,
                                int revisionCount, Instant finishedAt, String approvedByName,
                                Long projectId, String projectName, Long parentTaskId,
-                               List<TaskSubtaskResponse> subtasks) {
+                               List<TaskSubtaskResponse> subtasks, List<String> links) {
         public String code() {
             return "TASK-" + String.format("%04d", sequenceNumber);
         }

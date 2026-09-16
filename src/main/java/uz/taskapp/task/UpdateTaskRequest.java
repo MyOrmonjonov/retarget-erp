@@ -25,6 +25,7 @@ public record UpdateTaskRequest(
         @Valid List<CreateChecklistItemRequest> checklist,
         String format,
         String platform,
-        Long projectId
+        Long projectId,
+        List<String> links
 ) {
 }

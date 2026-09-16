@@ -64,6 +64,7 @@ interface TaskDto {
   projectName: string | null;
   parentTaskId: number | null;
   subtasks: TaskSubtaskDto[];
+  links: string[];
 }
 
 // Backend has no analog for frontend priority MEDIUM/backend NORMAL naming, but the two
@@ -152,6 +153,8 @@ export interface TaskDetail extends TaskListItem {
   /** Independent sub-tasks nested under this one (e.g. a Dizayn bo'limi TZ's own deliverables) -
    * each is a real task with its own status/assignee, shown inline in the edit form. */
   subtasks: TaskSubtask[];
+  /** Dizayn bo'limi only - reference URLs ("Havolalar"), capped at 5. */
+  links: string[];
 }
 
 function toTaskListItem(dto: TaskDto): TaskListItem {
@@ -211,6 +214,7 @@ function toTaskDetail(dto: TaskDto): TaskDetail {
         assigneeName: assignee ? assignee.name : '',
       };
     }),
+    links: dto.links,
   };
 }
 
@@ -248,6 +252,8 @@ export interface TaskInput {
   projectId?: string;
   /** Set to make this a subtask nested under an existing task (e.g. a Dizayn bo'limi TZ). */
   parentTaskId?: string;
+  /** Dizayn bo'limi only - reference URLs ("Havolalar"), capped at 5. */
+  links?: string[];
 }
 
 function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) {
@@ -269,6 +275,7 @@ function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) 
     platform: data.platform || undefined,
     projectId: data.projectId ? Number(data.projectId) : undefined,
     parentTaskId: data.parentTaskId ? Number(data.parentTaskId) : undefined,
+    links: data.links && data.links.length > 0 ? data.links.filter((url) => url.trim()) : undefined,
     ...extra,
   };
 }

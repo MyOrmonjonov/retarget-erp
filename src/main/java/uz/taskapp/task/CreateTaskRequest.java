@@ -25,6 +25,7 @@ public record CreateTaskRequest(
         String format,
         String platform,
         Long projectId,
-        Long parentTaskId
+        Long parentTaskId,
+        List<String> links
 ) {
 }

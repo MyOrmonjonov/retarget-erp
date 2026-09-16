@@ -134,6 +134,7 @@ function emptyForm(defaultStatus: TaskStatus = 'TODO'): TaskFormData {
     format: '',
     platform: '',
     projectId: undefined,
+    links: [],
   };
 }
 
@@ -142,6 +143,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
   const isEdit = !!initialData;
   const [form, setForm] = useState<TaskFormData>(emptyForm());
   const [checklistDraft, setChecklistDraft] = useState('');
+  const [linkDraft, setLinkDraft] = useState('');
   const [titleError, setTitleError] = useState<string | undefined>();
   const [dueDateError, setDueDateError] = useState<string | undefined>();
   const [assigneeError, setAssigneeError] = useState<string | undefined>();
@@ -175,11 +177,13 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
         format: initialData.tags?.[0] ?? '',
         platform: initialData.platform ?? '',
         projectId: initialData.projectId || undefined,
+        links: initialData.links ?? [],
       });
     } else {
       setForm(emptyForm(defaultStatus));
     }
     setChecklistDraft('');
+    setLinkDraft('');
     setTitleError(undefined);
     setDueDateError(undefined);
     setAssigneeError(undefined);
@@ -212,6 +216,17 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
 
   const removeChecklistItem = (index: number) => {
     setForm((f) => ({ ...f, checklist: (f.checklist ?? []).filter((_, i) => i !== index) }));
+  };
+
+  const addLink = () => {
+    const url = linkDraft.trim();
+    if (!url || (form.links ?? []).length >= 5) return;
+    setForm((f) => ({ ...f, links: [...(f.links ?? []), url] }));
+    setLinkDraft('');
+  };
+
+  const removeLink = (index: number) => {
+    setForm((f) => ({ ...f, links: (f.links ?? []).filter((_, i) => i !== index) }));
   };
 
   const addFiles = (fileList: FileList | null) => {
@@ -422,6 +437,39 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
                 label="Platforma"
                 options={DESIGN_PLATFORM_OPTIONS}
               />
+            </div>
+          )}
+
+          {showDesignFields && (
+            <div>
+              <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Havolalar</label>
+              <div className="space-y-1.5">
+                {(form.links ?? []).map((url, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <a href={url} target="_blank" rel="noreferrer"
+                       className="flex-1 text-body text-[var(--color-accent)] truncate hover:underline">
+                      {url}
+                    </a>
+                    <button type="button" onClick={() => removeLink(index)} aria-label="O'chirish">
+                      <X className="w-4 h-4 text-[var(--color-text-muted)] hover:text-[var(--color-error)]" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {(form.links ?? []).length < 5 && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={linkDraft}
+                    onChange={(e) => setLinkDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLink(); } }}
+                    placeholder="https://..."
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="secondary" onClick={addLink}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
