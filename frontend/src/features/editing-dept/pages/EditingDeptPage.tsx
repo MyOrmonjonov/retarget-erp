@@ -159,13 +159,17 @@ export function EditingDeptPage() {
 
   const allVideoTasks = useMemo(() => {
     return allTasks
-      .filter(isVideoTask)
+      // A task belongs on this board if it's video-related content (catches video work assigned
+      // outside the department too) OR it's assigned to a Montaj bo'limi editor - the keyword
+      // check alone made a task invisible here whenever its title/description just didn't happen
+      // to mention "video"/"montaj"/etc, even when a real editor was the assignee.
+      .filter((t) => isVideoTask(t) || t.assigneeIds.some((id) => editorIds.has(id)))
       .map((t) => {
         if (t.assigneeName || !t.assigneeId) return t;
         const employee = byUserId.get(t.assigneeId);
         return employee ? { ...t, assigneeName: employee.fullName, assigneeAvatar: employee.avatar } : t;
       });
-  }, [allTasks, byUserId]);
+  }, [allTasks, byUserId, editorIds]);
 
   const availableMonths = useMemo(() => {
     const keys = new Set(allVideoTasks.map((t) => monthKey(t.dueDate)));
