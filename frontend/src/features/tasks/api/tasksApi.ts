@@ -18,6 +18,13 @@ interface TaskChecklistItemDto {
   done: boolean;
 }
 
+interface TaskSubtaskDto {
+  id: number;
+  title: string;
+  status: BackendStatus;
+  assignees: TaskPersonDto[];
+}
+
 interface TaskAttachmentDto {
   id: number;
   name: string;
@@ -55,6 +62,8 @@ interface TaskDto {
   approvedByName: string | null;
   projectId: number | null;
   projectName: string | null;
+  parentTaskId: number | null;
+  subtasks: TaskSubtaskDto[];
 }
 
 // Backend has no analog for frontend priority MEDIUM/backend NORMAL naming, but the two
@@ -97,6 +106,16 @@ export interface TaskChecklistItem {
   done: boolean;
 }
 
+/** A subtask is a real, independent Task under the hood (its own status/assignee) - this is
+ * just the lightweight shape shown nested inside its parent's edit form. */
+export interface TaskSubtask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  assigneeId: string;
+  assigneeName: string;
+}
+
 export interface TaskAttachment {
   id: string;
   name: string;
@@ -128,6 +147,11 @@ export interface TaskDetail extends TaskListItem {
   /** Dizayn bo'limi only - platform (Instagram/Telegram/...) the design is for. Format is
    * folded into `tags[0]` instead, reusing the Kanban card's existing category-badge slot. */
   platform?: string;
+  /** Set when this task is itself a subtask of another (never more than one level deep). */
+  parentTaskId?: string;
+  /** Independent sub-tasks nested under this one (e.g. a Dizayn bo'limi TZ's own deliverables) -
+   * each is a real task with its own status/assignee, shown inline in the edit form. */
+  subtasks: TaskSubtask[];
 }
 
 function toTaskListItem(dto: TaskDto): TaskListItem {
@@ -176,6 +200,17 @@ function toTaskDetail(dto: TaskDto): TaskDetail {
     groupId: dto.groupId != null ? String(dto.groupId) : undefined,
     topicId: dto.topicId != null ? String(dto.topicId) : undefined,
     platform: dto.platform ?? undefined,
+    parentTaskId: dto.parentTaskId != null ? String(dto.parentTaskId) : undefined,
+    subtasks: dto.subtasks.map((s) => {
+      const assignee = s.assignees[0];
+      return {
+        id: String(s.id),
+        title: s.title,
+        status: STATUS_TO_FRONTEND[s.status as Exclude<BackendStatus, 'CANCELLED'>],
+        assigneeId: assignee ? String(assignee.id) : '',
+        assigneeName: assignee ? assignee.name : '',
+      };
+    }),
   };
 }
 
@@ -211,6 +246,8 @@ export interface TaskInput {
   platform?: string;
   /** Optional link to a project, shown on that project's detail page. */
   projectId?: string;
+  /** Set to make this a subtask nested under an existing task (e.g. a Dizayn bo'limi TZ). */
+  parentTaskId?: string;
 }
 
 function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) {
@@ -231,6 +268,7 @@ function buildTaskPayload(data: TaskInput, extra: Record<string, unknown> = {}) 
     format: data.format || undefined,
     platform: data.platform || undefined,
     projectId: data.projectId ? Number(data.projectId) : undefined,
+    parentTaskId: data.parentTaskId ? Number(data.parentTaskId) : undefined,
     ...extra,
   };
 }

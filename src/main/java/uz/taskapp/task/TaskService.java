@@ -124,6 +124,9 @@ public class TaskService {
         Instant now = clock.instant();
         LocalDate today = LocalDate.now(clock.withZone(APP_ZONE));
         return tasks.stream()
+                // Subtasks (parentTaskId set) only ever surface nested under their parent's own
+                // `subtasks` field - never as a standalone card on the main board.
+                .filter(task -> task.getParentTaskId() == null)
                 .filter(task -> visibleTo(task, assignees.getOrDefault(task.getId(), List.of()), currentUserId))
                 .filter(task -> matchesScope(task, assignees.getOrDefault(task.getId(), List.of()), currentUserId,
                         scope == null ? TaskScope.ACTIVE : scope, now, today))
@@ -152,6 +155,18 @@ public class TaskService {
         Long topicId = resolveTopicId(groupId, request.topicId());
         Set<Long> assigneeIds = resolveAssignees(request.workspaceId(), visibility, groupId, currentUserId,
                 request.assigneeIds());
+        if (request.parentTaskId() != null) {
+            TaskEntity parent = taskRepository.findByIdAndDeletedAtIsNull(request.parentTaskId())
+                    .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "PARENT_TASK_NOT_FOUND",
+                            "Ota vazifa topilmadi"));
+            if (!parent.getWorkspaceId().equals(request.workspaceId())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "PARENT_TASK_NOT_FOUND", "Ota vazifa topilmadi");
+            }
+            if (parent.getParentTaskId() != null) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "PARENT_TASK_NESTED",
+                        "Ichki vazifa o'zi ham ichki vazifa bo'lgan taskka bog'lanolmaydi");
+            }
+        }
 
         TaskEntity newTask = new TaskEntity(
                 request.workspaceId(), groupId, topicId, currentUserId, request.title(), request.description(),
@@ -161,6 +176,7 @@ public class TaskService {
                 request.dueAt());
         newTask.updateDesignMeta(request.format(), request.platform());
         newTask.linkProject(request.projectId());
+        newTask.linkParent(request.parentTaskId());
         newTask.assignSequence(nextTaskSequence(request.workspaceId()));
         final TaskEntity task = taskRepository.save(newTask);
         assigneeRepository.saveAll(assigneeIds.stream()
@@ -721,7 +737,18 @@ public class TaskService {
                 includeDetails ? attachmentDetails(task.getId()) : List.of(), reminderMinutes, task.getDeletedAt(),
                 task.getSequenceNumber(), task.getFormat(), task.getPlatform(), task.getRevisionCount(),
                 task.getFinishedAt(), task.getApprovedBy() == null ? null : displayName(task.getApprovedBy()),
-                task.getProjectId(), projectName(task));
+                task.getProjectId(), projectName(task), task.getParentTaskId(),
+                includeDetails ? subtasks(task.getId()) : List.of());
+    }
+
+    private List<TaskSubtaskResponse> subtasks(Long parentTaskId) {
+        List<TaskEntity> children = taskRepository.findAllByParentTaskIdInAndDeletedAtIsNull(List.of(parentTaskId));
+        if (children.isEmpty()) return List.of();
+        Map<Long, List<Long>> assignees = assigneesByTask(children.stream().map(TaskEntity::getId).toList());
+        return children.stream()
+                .map(child -> new TaskSubtaskResponse(child.getId(), child.getTitle(), child.getStatus(),
+                        assigneeDetails(assignees.getOrDefault(child.getId(), List.of()))))
+                .toList();
     }
 
     private String projectName(TaskEntity task) {
@@ -1122,11 +1149,14 @@ public class TaskService {
                                List<TaskAttachmentResponse> attachments, Integer reminderMinutes,
                                Instant archivedAt, Long sequenceNumber, String format, String platform,
                                int revisionCount, Instant finishedAt, String approvedByName,
-                               Long projectId, String projectName) {
+                               Long projectId, String projectName, Long parentTaskId,
+                               List<TaskSubtaskResponse> subtasks) {
         public String code() {
             return "TASK-" + String.format("%04d", sequenceNumber);
         }
     }
+
+    public record TaskSubtaskResponse(Long id, String title, TaskStatus status, List<TaskPersonResponse> assignees) {}
 
     public record TaskPersonResponse(Long id, String name, String username, String photoUrl) {}
 

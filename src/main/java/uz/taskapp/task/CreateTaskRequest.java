@@ -24,6 +24,7 @@ public record CreateTaskRequest(
         Long voiceDraftId,
         String format,
         String platform,
-        Long projectId
+        Long projectId,
+        Long parentTaskId
 ) {
 }

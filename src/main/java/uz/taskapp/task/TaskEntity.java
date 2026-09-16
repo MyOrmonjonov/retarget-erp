@@ -91,6 +91,12 @@ public class TaskEntity {
     @Column(name = "project_id")
     private Long projectId;
 
+    /** Optional - set when this task is a subtask of another task (e.g. a Dizayn bo'limi "TZ"
+     *  containing several independent sub-tasks). Never more than one level deep - see
+     *  TaskService#create validation. */
+    @Column(name = "parent_task_id")
+    private Long parentTaskId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -129,6 +135,11 @@ public class TaskEntity {
 
     public void linkProject(Long projectId) {
         this.projectId = projectId;
+        this.updatedAt = Instant.now();
+    }
+
+    public void linkParent(Long parentTaskId) {
+        this.parentTaskId = parentTaskId;
         this.updatedAt = Instant.now();
     }
 
@@ -211,6 +222,7 @@ public class TaskEntity {
     public Instant getFinishedAt() { return finishedAt; }
     public Long getApprovedBy() { return approvedBy; }
     public Long getProjectId() { return projectId; }
+    public Long getParentTaskId() { return parentTaskId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

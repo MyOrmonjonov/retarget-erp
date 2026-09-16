@@ -8,9 +8,12 @@ import { Select, type SelectOption } from '@/shared/ui/select';
 import { Textarea } from '@/shared/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/ui/dialog';
 import type { TaskPriority, TaskStatus } from '@/shared/types';
-import type { TaskDetail, TaskInput } from '../api/tasksApi';
+import type { TaskDetail, TaskInput, TaskSubtask } from '../api/tasksApi';
 import type { Group } from '@/features/groups/api/groupsApi';
 import { useGroupTopics } from '@/features/groups/hooks/useGroups';
+import { useCreateTask, useChangeTaskStatus, useDeleteTask } from '../hooks/useTasks';
+import { InlineTaskStatusSelect } from '@/shared/components/InlineTaskStatusSelect';
+import { Avatar } from '@/shared/ui/avatar';
 import { CommentThread } from './CommentThread';
 
 export type TaskFormData = TaskInput;
@@ -142,6 +145,13 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
   const [titleError, setTitleError] = useState<string | undefined>();
   const [dueDateError, setDueDateError] = useState<string | undefined>();
   const [assigneeError, setAssigneeError] = useState<string | undefined>();
+  const [subtasks, setSubtasks] = useState<TaskSubtask[]>([]);
+  const [subtaskDraftTitle, setSubtaskDraftTitle] = useState('');
+  const [subtaskDraftAssignee, setSubtaskDraftAssignee] = useState('');
+
+  const createSubtask = useCreateTask();
+  const changeSubtaskStatus = useChangeTaskStatus();
+  const deleteSubtask = useDeleteTask();
 
   const selectedGroupId = form.groupId ? Number(form.groupId) : null;
   const { data: topics = [] } = useGroupTopics(selectedGroupId);
@@ -173,6 +183,9 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
     setTitleError(undefined);
     setDueDateError(undefined);
     setAssigneeError(undefined);
+    setSubtasks(initialData?.subtasks ?? []);
+    setSubtaskDraftTitle('');
+    setSubtaskDraftAssignee('');
   }, [isOpen, initialData, defaultStatus]);
 
   const toggleAssignee = (id: string) => {
@@ -208,6 +221,39 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
 
   const removeFile = (index: number) => {
     setForm((f) => ({ ...f, files: (f.files ?? []).filter((_, i) => i !== index) }));
+  };
+
+  const addSubtask = async () => {
+    const title = subtaskDraftTitle.trim();
+    if (!title || !initialData) return;
+    const created = await createSubtask.mutateAsync({
+      title,
+      description: '',
+      assigneeIds: subtaskDraftAssignee ? [subtaskDraftAssignee] : [],
+      priority: 'MEDIUM',
+      status: 'TODO',
+      dueDate: form.dueDate,
+      parentTaskId: initialData.id,
+    });
+    setSubtasks((s) => [...s, {
+      id: created.id,
+      title: created.title,
+      status: created.status,
+      assigneeId: created.assigneeId,
+      assigneeName: created.assigneeName,
+    }]);
+    setSubtaskDraftTitle('');
+    setSubtaskDraftAssignee('');
+  };
+
+  const changeSubtaskStatusLocal = (subtaskId: string, status: TaskStatus) => {
+    setSubtasks((s) => s.map((item) => (item.id === subtaskId ? { ...item, status } : item)));
+    changeSubtaskStatus.mutate({ id: subtaskId, status });
+  };
+
+  const removeSubtask = (subtaskId: string) => {
+    setSubtasks((s) => s.filter((item) => item.id !== subtaskId));
+    deleteSubtask.mutate(subtaskId);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -394,6 +440,47 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
               options={REMINDER_OPTIONS}
             />
           </div>
+
+          {isEdit && initialData && (
+            <div>
+              <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Ichki vazifalar</label>
+              <div className="space-y-1.5">
+                {subtasks.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[var(--color-bg-hover)]">
+                    <span className="flex-1 text-body text-[var(--color-text-primary)] truncate">{item.title}</span>
+                    {item.assigneeName && (
+                      <span className="flex items-center gap-1.5 flex-shrink-0">
+                        <Avatar name={item.assigneeName} size="xs" />
+                        <span className="text-caption text-[var(--color-text-secondary)] hidden sm:inline">{item.assigneeName}</span>
+                      </span>
+                    )}
+                    <InlineTaskStatusSelect status={item.status} onChange={(status) => changeSubtaskStatusLocal(item.id, status)} />
+                    <button type="button" onClick={() => removeSubtask(item.id)} aria-label="O'chirish">
+                      <X className="w-4 h-4 text-[var(--color-text-muted)] hover:text-[var(--color-error)]" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                <Input
+                  value={subtaskDraftTitle}
+                  onChange={(e) => setSubtaskDraftTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
+                  placeholder="Ichki vazifa nomi..."
+                  className="flex-1"
+                />
+                <Select
+                  value={subtaskDraftAssignee}
+                  onChange={(e) => setSubtaskDraftAssignee(e.target.value)}
+                  options={[{ value: '', label: 'Ijrochisiz' }, ...assigneeOptions]}
+                  className="sm:w-48"
+                />
+                <Button type="button" variant="secondary" onClick={addSubtask} disabled={createSubtask.isPending}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-body font-medium text-[var(--color-text-primary)] mb-1.5">Checklist</label>
