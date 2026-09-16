@@ -5,6 +5,7 @@ import { Plus, X, Paperclip, Check } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Select, type SelectOption } from '@/shared/ui/select';
+import { DatePicker } from '@/shared/ui/date-picker';
 import { Textarea } from '@/shared/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/ui/dialog';
 import type { TaskPriority, TaskStatus } from '@/shared/types';
@@ -487,10 +488,9 @@ export function TaskForm({ isOpen, onClose, onSubmit, initialData, isLoading, as
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
+            <DatePicker
               value={form.dueDate}
-              onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-              type="date"
+              onChange={(value) => setForm((f) => ({ ...f, dueDate: value }))}
               label="Tugash muddati"
               error={dueDateError}
             />
